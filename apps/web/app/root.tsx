@@ -24,6 +24,7 @@ import { I18nProvider } from './lib/i18n'
 import { useNonce } from './lib/nonce'
 import { anonPrefs } from './lib/prefs.server'
 import { type Viewer, viewerContext } from './lib/session'
+import { supportUrl } from './lib/support.server'
 
 export const links: LinksFunction = () => [
   { rel: 'icon', href: '/favicon.svg', type: 'image/svg+xml' },
@@ -71,6 +72,7 @@ export async function loader({ context }: Route.LoaderArgs) {
     lang: v.lang,
     script: v.script,
     theme: v.theme,
+    supportUrl: supportUrl(),
   }
 }
 

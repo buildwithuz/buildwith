@@ -3,8 +3,9 @@
 ## Reporting a vulnerability
 
 **Please don't open a public issue.** Report privately through
-[GitHub Security Advisories](https://github.com/buildwithuz/buildwith/security/advisories/new),
-or email **security@buildwith.uz**.
+[GitHub Security Advisories](https://github.com/buildwithuz/buildwith/security/advisories/new).
+If you can't use GitHub, write to the buildwith.uz Telegram bot (linked under _Support_ in the site footer)
+and say it's a security report; only maintainers read those messages.
 
 Include steps to reproduce, impact, and (if you have one) a suggested fix.
 

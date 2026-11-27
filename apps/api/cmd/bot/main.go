@@ -1,6 +1,5 @@
-// Command bot is the Telegram bot: /start links the chat to the buildwith.uz
-// account that signed in with this Telegram user, /stop silences it.
-// Notifications themselves are sent by the worker.
+// Command bot runs the buildwith.uz Telegram bot: account linking for
+// notifications (which the worker sends) and the support inbox. See internal/bot.
 package main
 
 import (
@@ -10,16 +9,16 @@ import (
 	"log/slog"
 	"os"
 	"os/signal"
-	"strconv"
-	"strings"
 	"syscall"
 	"time"
 
 	"github.com/buildwithuz/buildwith/apps/api/internal/app"
+	"github.com/buildwithuz/buildwith/apps/api/internal/bot"
+	"github.com/buildwithuz/buildwith/apps/api/internal/clock"
 	"github.com/buildwithuz/buildwith/apps/api/internal/config"
 	"github.com/buildwithuz/buildwith/apps/api/internal/dbgen"
 	"github.com/buildwithuz/buildwith/apps/api/internal/fetch"
-	"github.com/buildwithuz/buildwith/apps/api/internal/i18n"
+	"github.com/buildwithuz/buildwith/apps/api/internal/ratelimit"
 	"github.com/buildwithuz/buildwith/apps/api/internal/server"
 	"github.com/buildwithuz/buildwith/apps/api/internal/telegram"
 )
@@ -50,8 +49,9 @@ func run() error {
 	q := dbgen.New(pool)
 	// Long polling holds the request open for 25 s, so this client waits longer.
 	tg := telegram.New(cfg.Telegram.BotToken, fetch.New(fetch.Options{Timeout: 40 * time.Second}))
+	b := &bot.Bot{TG: tg, Q: q, Limiter: ratelimit.New(q, clock.System()), SupportChat: cfg.Telegram.SupportChat}
 
-	slog.Info("bot polling")
+	slog.Info("bot polling", "support", cfg.Telegram.SupportChat != 0)
 	var offset int64
 	for ctx.Err() == nil {
 		updates, err := tg.Updates(ctx, offset)
@@ -64,51 +64,8 @@ func run() error {
 		}
 		for _, u := range updates {
 			offset = u.ID + 1
-			if u.Message == nil || u.Message.Chat.Type != "private" {
-				continue
-			}
-			reply := handle(ctx, q, u)
-			if err := tg.Send(ctx, u.Message.Chat.ID, reply, "", ""); err != nil {
-				slog.Warn("sendMessage", "err", err)
-			}
+			b.Handle(ctx, u)
 		}
 	}
 	return nil
-}
-
-func lang(code string) string {
-	switch {
-	case strings.HasPrefix(code, "ru"):
-		return "ru"
-	case strings.HasPrefix(code, "en"):
-		return "en"
-	}
-	return "uz"
-}
-
-func handle(ctx context.Context, q *dbgen.Queries, u telegram.Update) string {
-	m := u.Message
-	l := lang(m.From.LanguageCode)
-	cmd := strings.Fields(m.Text + " ")[0]
-	switch cmd {
-	case "/start":
-		user, err := q.GetUserByIdentity(ctx, dbgen.GetUserByIdentityParams{
-			Provider: "telegram", Subject: strconv.FormatInt(m.From.ID, 10)})
-		if err != nil {
-			return i18n.T(l, "bot.start_unknown", nil)
-		}
-		if _, err := q.LinkTelegram(ctx, dbgen.LinkTelegramParams{UserID: user.ID, ChatID: m.Chat.ID, Handle: m.From.Username}); err != nil {
-			slog.Error("link telegram", "err", err)
-			return i18n.T(user.Lang, "bot.start_unknown", nil)
-		}
-		_ = q.SetTelegramNotify(ctx, dbgen.SetTelegramNotifyParams{UserID: user.ID, Notify: true})
-		return i18n.T(user.Lang, "bot.start_linked", nil)
-	case "/stop":
-		// Forget the chat entirely, as the privacy page promises; /start links it again.
-		if t, err := q.GetTelegramByChat(ctx, m.Chat.ID); err == nil {
-			_, _ = q.UnlinkTelegram(ctx, t.UserID)
-		}
-		return i18n.T(l, "bot.stopped", nil)
-	}
-	return i18n.T(l, "bot.help", nil)
 }

@@ -59,7 +59,7 @@
 
 ## Связь
 
-Вопросы о ваших данных: пишите на hello@buildwith.uz или откройте обсуждение на [GitHub](https://github.com/buildwithuz/buildwith).
+Вопросы о ваших данных? {{contact}}
 
 ## Изменения
 

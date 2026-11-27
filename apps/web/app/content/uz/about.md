@@ -50,3 +50,7 @@ buildwith.uz ni uning foydalanuvchilari quradi. Kod [github.com/buildwithuz/buil
 - **Xavfsizlik muammolarini yopiq yetkazing** — ochiq issue emas, repozitoriydagi GitHub security advisories orqali.
 
 Dasturchi boʻlmasangiz ham yordam bera olasiz: yaxshi maqola yozing, biror Savolga javob bering yoki bu yer yoqadigan hamkasbingizni taklif qiling.
+
+## Bogʻlanish
+
+Savol, taklif yoki muammo bormi? {{contact}}

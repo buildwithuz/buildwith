@@ -50,3 +50,7 @@ buildwith.uz is built by its users. The code lives at [github.com/buildwithuz/bu
 - **Report security problems privately** through GitHub security advisories on the repository, not in a public issue.
 
 If you are not a programmer, you can still help: write a good article, answer a Savol, or invite a colleague who would enjoy it here.
+
+## Contact
+
+Questions, ideas or problems? {{contact}}

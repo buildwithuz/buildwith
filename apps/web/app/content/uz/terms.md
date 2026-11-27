@@ -70,4 +70,4 @@ Bu shartlar Oʻzbekiston Respublikasi qonunchiligiga boʻysunadi. Har qanday kel
 
 ## Bogʻlanish
 
-Bu shartlar haqida savollar boʻlsa, hello@buildwith.uz ga yozing yoki [GitHub](https://github.com/buildwithuz/buildwith) da muhokama oching.
+Bu shartlar haqida savolingiz bormi? {{contact}}

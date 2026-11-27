@@ -98,10 +98,15 @@
   "bot": {
     "autopost": "{title}\n{points} ball · {url}",
     "digest_title": "Bugungi eng yaxshi 10 ta post",
-    "help": "/start — bildirishnomalarni yoqish\n/stop — oʻchirish",
-    "start_linked": "Tayyor! Endi buildwith.uz bildirishnomalari shu yerga keladi. Toʻxtatish uchun /stop.",
-    "start_unknown": "Avval buildwith.uz saytiga Telegram orqali kiring, soʻng /start buyrugʻini qayta yuboring.",
-    "stopped": "Telegram uzildi va chat identifikatoringiz oʻchirildi. Qayta ulash uchun /start."
+    "group_help": "Bu guruh buildwith.uz yordam qutisi. Foydalanuvchi xabariga reply qiling — javobingiz unga yetkaziladi (👍 belgisi yetkazilganini bildiradi). Reply boʻlmagan xabarlar faqat shu guruhda qoladi.",
+    "help": "Shu yerga yozing — xabaringiz buildwith.uz jamoasiga boradi va javob shu chatga keladi.\n\n/start — bildirishnomalarni ulash\n/stop — Telegramni uzish",
+    "start_linked": "Tayyor! buildwith.uz bildirishnomalari shu yerga keladi.\n\nSavol, taklif yoki muammo boʻlsa — shu yerga yozing, jamoa shu chatda javob beradi.\n\n/stop — Telegramni uzish",
+    "start_unknown": "Salom! Bu buildwith.uz yordam boti.\n\nSavol, taklif yoki muammo boʻlsa — shu yerga yozing, jamoa shu chatda javob beradi. Rasm va fayl ham yuborsa boʻladi.\n\nBildirishnomalarni shu yerda olish uchun saytga Telegram orqali kiring va /start ni qayta yuboring.",
+    "stopped": "Telegram uzildi va chat identifikatoringiz oʻchirildi. Qayta ulash uchun /start.",
+    "support_header": "📩 {who} yozdi. Javob berish uchun shu xabarga yoki quyidagisiga reply qiling.",
+    "support_off": "Hozircha yordam xizmati ulanmagan. Iltimos, GitHub Discussions da yozing: github.com/buildwithuz/buildwith/discussions",
+    "support_slow": "Xabarlar juda tez kelyapti. Biroz kutib, keyin yana yozing.",
+    "support_undelivered": "⚠️ Javob yetkazilmadi: foydalanuvchi botni bloklagan boʻlishi mumkin."
   },
   "common": {
     "and_more": "va yana {count}",
@@ -254,6 +259,7 @@
     "modlog": "Moderatsiya jurnali",
     "privacy": "Maxfiylik",
     "source": "Manba kodi",
+    "support": "Yordam",
     "terms": "Shartlar"
   },
   "home": {
@@ -706,6 +712,10 @@
     "title": "Yangi post",
     "too_many_tags": "Koʻpi bilan 3 ta teg.",
     "url_show_hint": "Demo, GitHub yoki sayt. URL yoʻq boʻlsa, pastda batafsil yozing."
+  },
+  "support": {
+    "contact_bot": "Telegramdagi {link} botiga yozing — jamoa oʻsha chatda javob beradi.",
+    "contact_fallback": "{link} boʻlimida yozing."
   },
   "tag": {
     "empty": "Bu tegda hali hech narsa yoʻq.",

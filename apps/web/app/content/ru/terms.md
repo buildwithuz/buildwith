@@ -70,4 +70,4 @@ buildwith.uz предоставляется «как есть». Мы делае
 
 ## Связь
 
-Вопросы об этих условиях: пишите на hello@buildwith.uz или откройте обсуждение на [GitHub](https://github.com/buildwithuz/buildwith).
+Вопросы об этих условиях? {{contact}}

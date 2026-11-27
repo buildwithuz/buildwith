@@ -211,11 +211,13 @@ type Querier interface {
 	PeekRateCounter(ctx context.Context, arg PeekRateCounterParams) (int32, error)
 	PromoteNoteToLink(ctx context.Context, arg PromoteNoteToLinkParams) error
 	PruneRateCounters(ctx context.Context) (int64, error)
+	PruneSupportMessages(ctx context.Context) (int64, error)
 	PublishArticle(ctx context.Context, id int64) (Article, error)
 	PublishDueArticle(ctx context.Context, id int64) (int64, error)
 	// Karma is recomputed from scratch so it can never drift.
 	RecomputeKarma(ctx context.Context, userID int64) (int32, error)
 	RecordNoteEdit(ctx context.Context, arg RecordNoteEditParams) error
+	RecordSupportMessage(ctx context.Context, arg RecordSupportMessageParams) error
 	RegisterMonthlyThread(ctx context.Context, arg RegisterMonthlyThreadParams) error
 	RelationTo(ctx context.Context, arg RelationToParams) (RelationToRow, error)
 	ReleaseHold(ctx context.Context, arg ReleaseHoldParams) (int64, error)
@@ -251,6 +253,7 @@ type Querier interface {
 	SoftDeleteLink(ctx context.Context, id int64) (int64, error)
 	SoftDeleteNote(ctx context.Context, id int64) (int64, error)
 	SubjectAuthor(ctx context.Context, arg SubjectAuthorParams) (int64, error)
+	SupportSender(ctx context.Context, groupMessageID int64) (int64, error)
 	TakeOAuthState(ctx context.Context, state string) (OauthState, error)
 	TouchSession(ctx context.Context, tokenHash []byte) error
 	TrimArticleVersions(ctx context.Context, arg TrimArticleVersionsParams) (int64, error)

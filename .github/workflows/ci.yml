@@ -219,7 +219,7 @@ jobs:
         run: |
           printf 'POSTGRES_PASSWORD=ci\n' > "$RUNNER_TEMP/env"
           BUILDWITH_ENV_FILE="$RUNNER_TEMP/env" docker compose --env-file "$RUNNER_TEMP/env" -f deploy/compose.prod.yml config --quiet
-          docker run --rm -e BUILDWITH_DOMAIN=buildwith.uz -e BUILDWITH_ACME_EMAIL=ci@buildwith.uz \
+          docker run --rm -e BUILDWITH_DOMAIN=buildwith.uz \
             -v "$PWD/deploy:/etc/caddy:ro" caddy:2 caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
           for f in deploy/*.sh; do bash -n "$f"; done
 

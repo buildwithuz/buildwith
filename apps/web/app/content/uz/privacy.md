@@ -59,7 +59,7 @@ Profilingiz va joylagan hamma narsangiz ochiq, uni istalgan kishi, jumladan API 
 
 ## Bogʻlanish
 
-Maʼlumotlaringiz haqida savollar boʻlsa, hello@buildwith.uz ga yozing yoki [GitHub](https://github.com/buildwithuz/buildwith) da muhokama oching.
+Maʼlumotlaringiz haqida savolingiz bormi? {{contact}}
 
 ## Oʻzgarishlar
 

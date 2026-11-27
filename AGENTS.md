@@ -46,6 +46,8 @@ pnpm e2e             # Playwright against a local stack
 - **Dependencies:** don't add one without an accepted discussion; prefer the standard library / existing deps.
 - **No paid APIs, third-party trackers, external CDNs or third-party embed scripts.** One exception: Telegram's
   official login widget on `/login`, loaded only when a bot is configured (Telegram sign-in is a core feature).
+- **No email addresses.** buildwith.uz has no mailbox: support and reports go to the Telegram bot (one bot does sign-in,
+  notifications and support) or GitHub. Link the bot via `supportUrl()`/`{{contact}}`, never a hard-coded address.
 - **Time:** store UTC, inject clocks in logic, display Asia/Tashkent by default. Format dates with `app/lib/time.ts`,
   not `Intl` directly: browsers and Node ship different Uzbek locale data, which breaks hydration.
 - **Routing:** React Router has no partial segments, so `/@user` routes match `:handle` and check the `@` in the loader.

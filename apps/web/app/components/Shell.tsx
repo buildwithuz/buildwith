@@ -247,6 +247,9 @@ function Footer() {
             <a href="/about" className="hover:text-ink">
               {t('footer.about')}
             </a>
+            <a href={root?.supportUrl} className="hover:text-ink">
+              {t('footer.support')}
+            </a>
             <a href="/guidelines" className="hover:text-ink">
               {t('footer.guidelines')}
             </a>

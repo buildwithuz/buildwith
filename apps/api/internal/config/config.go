@@ -36,6 +36,8 @@ type Telegram struct {
 	BotToken    string
 	BotUsername string
 	Channel     string
+	// SupportChat is the maintainers' group where support messages land (a negative id).
+	SupportChat int64
 }
 
 func (t Telegram) Configured() bool { return t.BotToken != "" }
@@ -82,6 +84,14 @@ func Load() (Config, error) {
 			Password: os.Getenv("BUILDWITH_SMTP_PASSWORD"),
 			From:     os.Getenv("BUILDWITH_SMTP_FROM"),
 		},
+	}
+
+	if v := os.Getenv("BUILDWITH_TELEGRAM_SUPPORT_CHAT"); v != "" {
+		id, err := strconv.ParseInt(v, 10, 64)
+		if err != nil || id >= 0 {
+			return c, fmt.Errorf("BUILDWITH_TELEGRAM_SUPPORT_CHAT: want a group id (negative number), got %q", v)
+		}
+		c.Telegram.SupportChat = id
 	}
 
 	if days := os.Getenv("BUILDWITH_SESSION_DAYS"); days != "" {
