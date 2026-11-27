@@ -5,88 +5,422 @@
     "apps/api/internal/translit (Go, used for search, feeds and bot messages).",
     "Add a failing case here first, with a note explaining the rule, then fix both sides."
   ],
-
   "normalize": [
-    { "in": "o'zbek", "out": "oʻzbek", "note": "ASCII apostrophe after o is the oʻ letter (U+02BB)" },
-    { "in": "o’zbek", "out": "oʻzbek", "note": "right single quote after o is the same letter" },
-    { "in": "o‘zbek", "out": "oʻzbek", "note": "left single quote after o too" },
-    { "in": "o`zbek", "out": "oʻzbek", "note": "backtick after o too" },
-    { "in": "oʼzbek", "out": "oʻzbek", "note": "U+02BC after o is a mistake for U+02BB" },
-    { "in": "g'isht", "out": "gʻisht", "note": "the same rule applies after g" },
-    { "in": "G'AZAL", "out": "GʻAZAL", "note": "and after an uppercase G" },
-    { "in": "Oʻzbekiston", "out": "Oʻzbekiston", "note": "already correct, unchanged" },
-    { "in": "ma'no", "out": "maʼno", "note": "elsewhere the apostrophe is a separator (U+02BC)" },
-    { "in": "san'at", "out": "sanʼat", "note": "separator after n" },
-    { "in": "s'h", "out": "sʼh", "note": "the separator is what keeps s+h from becoming sh" },
-    { "in": "it's fine", "out": "itʼs fine", "note": "English text passes through the separator rule" },
-    { "in": "don't", "out": "donʼt", "note": "n is not o or g, so separator" },
-    { "in": "", "out": "", "note": "empty string" }
+    {
+      "in": "o'zbek",
+      "out": "oʻzbek",
+      "note": "ASCII apostrophe after o is the oʻ letter (U+02BB)"
+    },
+    {
+      "in": "o’zbek",
+      "out": "oʻzbek",
+      "note": "right single quote after o is the same letter"
+    },
+    {
+      "in": "o‘zbek",
+      "out": "oʻzbek",
+      "note": "left single quote after o too"
+    },
+    {
+      "in": "o`zbek",
+      "out": "oʻzbek",
+      "note": "backtick after o too"
+    },
+    {
+      "in": "oʼzbek",
+      "out": "oʻzbek",
+      "note": "U+02BC after o is a mistake for U+02BB"
+    },
+    {
+      "in": "g'isht",
+      "out": "gʻisht",
+      "note": "the same rule applies after g"
+    },
+    {
+      "in": "G'AZAL",
+      "out": "GʻAZAL",
+      "note": "and after an uppercase G"
+    },
+    {
+      "in": "Oʻzbekiston",
+      "out": "Oʻzbekiston",
+      "note": "already correct, unchanged"
+    },
+    {
+      "in": "ma'no",
+      "out": "maʼno",
+      "note": "elsewhere the apostrophe is a separator (U+02BC)"
+    },
+    {
+      "in": "san'at",
+      "out": "sanʼat",
+      "note": "separator after n"
+    },
+    {
+      "in": "s'h",
+      "out": "sʼh",
+      "note": "the separator is what keeps s+h from becoming sh"
+    },
+    {
+      "in": "it's fine",
+      "out": "itʼs fine",
+      "note": "English text passes through the separator rule"
+    },
+    {
+      "in": "don't",
+      "out": "donʼt",
+      "note": "n is not o or g, so separator"
+    },
+    {
+      "in": "",
+      "out": "",
+      "note": "empty string"
+    }
   ],
-
   "toCyrillic": [
-    { "in": "oʻzbek", "out": "ўзбек", "note": "oʻ is one letter, ў" },
-    { "in": "gʻisht", "out": "ғишт", "note": "gʻ is one letter, ғ" },
-    { "in": "o'zbek tili", "out": "ўзбек тили", "note": "normalization runs first" },
-    { "in": "shahar", "out": "шаҳар", "note": "sh digraph; h is ҳ" },
-    { "in": "chiroq", "out": "чироқ", "note": "ch digraph; q is қ" },
-    { "in": "ming", "out": "минг", "note": "ng stays нг, it is not one letter" },
-    { "in": "singil", "out": "сингил", "note": "ng inside a word is still нг" },
-    { "in": "sʼhakar", "out": "сҳакар", "note": "a separator before h blocks the sh digraph" },
-    { "in": "yer", "out": "ер", "note": "ye at the start is е" },
-    { "in": "yoʻl", "out": "йўл", "note": "yo before the oʻ letter is й + ў, not ё" },
-    { "in": "yomon", "out": "ёмон", "note": "yo at the start is ё" },
-    { "in": "yulduz", "out": "юлдуз", "note": "yu at the start is ю" },
-    { "in": "yashil", "out": "яшил", "note": "ya at the start is я" },
-    { "in": "quyosh", "out": "қуёш", "note": "yo after a vowel is ё" },
-    { "in": "soya", "out": "соя", "note": "ya after a vowel is я" },
-    { "in": "ertaga", "out": "эртага", "note": "e at word start is э" },
-    { "in": "men", "out": "мен", "note": "e inside a word is е" },
-    { "in": "maʼno", "out": "маъно", "note": "the separator becomes ъ" },
-    { "in": "jurnal", "out": "журнал", "note": "j is ж" },
-    { "in": "xalq", "out": "халқ", "note": "x is х, q is қ" },
-    { "in": "hovli", "out": "ҳовли", "note": "h is ҳ" },
-    { "in": "traktor", "out": "трактор", "note": "ts is not involved" },
-    { "in": "sirkulatsiya", "out": "сиркулация", "note": "ts is ц in this known loanword" },
-    { "in": "ketsin", "out": "кетсин", "note": "ts outside the loanword list stays тс" },
-    { "in": "Toshkent", "out": "Тошкент", "note": "capital Sh keeps its case" },
-    { "in": "TOSHKENT", "out": "ТОШКЕНТ", "note": "all caps: SH is Ш" },
-    { "in": "Oʻzbekiston", "out": "Ўзбекистон", "note": "capital Oʻ is Ў" },
-    { "in": "GʻIJDUVON", "out": "ҒИЖДУВОН", "note": "all caps Gʻ is Ғ" },
-    { "in": "salom @aziz", "out": "салом @aziz", "note": "a username is never transliterated" },
-    { "in": "ko'ring #golang", "out": "кўринг #golang", "note": "a tag is never transliterated" },
-    { "in": "https://buildwith.uz/yangi", "out": "https://buildwith.uz/yangi", "note": "a URL is never transliterated" },
-    { "in": "aziz@buildwith.uz ga yozing", "out": "aziz@buildwith.uz га ёзинг", "note": "an email is never transliterated" },
-    { "in": "2026-yil", "out": "2026-йил", "note": "digits pass through" },
-    { "in": "Salom, dunyo!", "out": "Салом, дунё!", "note": "punctuation passes through" }
+    {
+      "in": "oʻzbek",
+      "out": "ўзбек",
+      "note": "oʻ is one letter, ў"
+    },
+    {
+      "in": "gʻisht",
+      "out": "ғишт",
+      "note": "gʻ is one letter, ғ"
+    },
+    {
+      "in": "o'zbek tili",
+      "out": "ўзбек тили",
+      "note": "normalization runs first"
+    },
+    {
+      "in": "shahar",
+      "out": "шаҳар",
+      "note": "sh digraph; h is ҳ"
+    },
+    {
+      "in": "chiroq",
+      "out": "чироқ",
+      "note": "ch digraph; q is қ"
+    },
+    {
+      "in": "ming",
+      "out": "минг",
+      "note": "ng stays нг, it is not one letter"
+    },
+    {
+      "in": "singil",
+      "out": "сингил",
+      "note": "ng inside a word is still нг"
+    },
+    {
+      "in": "sʼhakar",
+      "out": "сҳакар",
+      "note": "a separator before h blocks the sh digraph"
+    },
+    {
+      "in": "yer",
+      "out": "ер",
+      "note": "ye at the start is е"
+    },
+    {
+      "in": "yoʻl",
+      "out": "йўл",
+      "note": "yo before the oʻ letter is й + ў, not ё"
+    },
+    {
+      "in": "yomon",
+      "out": "ёмон",
+      "note": "yo at the start is ё"
+    },
+    {
+      "in": "yulduz",
+      "out": "юлдуз",
+      "note": "yu at the start is ю"
+    },
+    {
+      "in": "yashil",
+      "out": "яшил",
+      "note": "ya at the start is я"
+    },
+    {
+      "in": "quyosh",
+      "out": "қуёш",
+      "note": "yo after a vowel is ё"
+    },
+    {
+      "in": "soya",
+      "out": "соя",
+      "note": "ya after a vowel is я"
+    },
+    {
+      "in": "ertaga",
+      "out": "эртага",
+      "note": "e at word start is э"
+    },
+    {
+      "in": "men",
+      "out": "мен",
+      "note": "e inside a word is е"
+    },
+    {
+      "in": "maʼno",
+      "out": "маъно",
+      "note": "the separator becomes ъ"
+    },
+    {
+      "in": "jurnal",
+      "out": "журнал",
+      "note": "j is ж"
+    },
+    {
+      "in": "xalq",
+      "out": "халқ",
+      "note": "x is х, q is қ"
+    },
+    {
+      "in": "hovli",
+      "out": "ҳовли",
+      "note": "h is ҳ"
+    },
+    {
+      "in": "traktor",
+      "out": "трактор",
+      "note": "ts is not involved"
+    },
+    {
+      "in": "sirkulatsiya",
+      "out": "сиркулация",
+      "note": "ts is ц in this known loanword"
+    },
+    {
+      "in": "ketsin",
+      "out": "кетсин",
+      "note": "ts outside the loanword list stays тс"
+    },
+    {
+      "in": "Toshkent",
+      "out": "Тошкент",
+      "note": "capital Sh keeps its case"
+    },
+    {
+      "in": "TOSHKENT",
+      "out": "ТОШКЕНТ",
+      "note": "all caps: SH is Ш"
+    },
+    {
+      "in": "Oʻzbekiston",
+      "out": "Ўзбекистон",
+      "note": "capital Oʻ is Ў"
+    },
+    {
+      "in": "GʻIJDUVON",
+      "out": "ҒИЖДУВОН",
+      "note": "all caps Gʻ is Ғ"
+    },
+    {
+      "in": "salom @aziz",
+      "out": "салом @aziz",
+      "note": "a username is never transliterated"
+    },
+    {
+      "in": "ko'ring #golang",
+      "out": "кўринг #golang",
+      "note": "a tag is never transliterated"
+    },
+    {
+      "in": "https://buildwith.uz/yangi",
+      "out": "https://buildwith.uz/yangi",
+      "note": "a URL is never transliterated"
+    },
+    {
+      "in": "aziz@buildwith.uz ga yozing",
+      "out": "aziz@buildwith.uz га ёзинг",
+      "note": "an email is never transliterated"
+    },
+    {
+      "in": "2026-yil",
+      "out": "2026-йил",
+      "note": "digits pass through"
+    },
+    {
+      "in": "Salom, dunyo!",
+      "out": "Салом, дунё!",
+      "note": "punctuation passes through"
+    },
+    {
+      "in": "JavaScript kodini yozdim",
+      "out": "JavaScript кодини ёздим",
+      "note": "camelCase marks a foreign word; it stays Latin"
+    },
+    {
+      "in": "Docker va React bilan",
+      "out": "Docker ва React билан",
+      "note": "a c outside ch never occurs in Uzbek Latin, so the word is foreign"
+    },
+    {
+      "in": "WebSocket ulanishi",
+      "out": "WebSocket уланиши",
+      "note": "w never occurs in Uzbek Latin"
+    },
+    {
+      "in": "SQL va HTML",
+      "out": "SQL ва HTML",
+      "note": "all-caps words without vowels are acronyms"
+    },
+    {
+      "in": "errors.Join ishlatdim",
+      "out": "errors.Join ишлатдим",
+      "note": "dotted identifiers and file names are code"
+    },
+    {
+      "in": "buildwith.uz saytida",
+      "out": "buildwith.uz сайтида",
+      "note": "a bare domain is never transliterated"
+    },
+    {
+      "in": "Chorshanba kuni",
+      "out": "Чоршанба куни",
+      "note": "a capital Ch is still the ch digraph, not a foreign c"
+    },
+    {
+      "in": "AGPL litsenziyasi, API va IT",
+      "out": "AGPL лицензияси, API ва IT",
+      "note": "all-caps words of up to four letters are acronyms"
+    },
+    {
+      "in": "OʻZBEKISTON RESPUBLIKASI",
+      "out": "ЎЗБЕКИСТОН РЕСПУБЛИКАСИ",
+      "note": "longer all-caps Uzbek words still convert"
+    },
+    {
+      "in": "Google orqali kirish",
+      "out": "Google орқали кириш",
+      "note": "a doubled o or e never occurs in Uzbek Latin, so the word is foreign"
+    }
   ],
-
   "toLatin": [
-    { "in": "ўзбек", "out": "oʻzbek", "note": "ў is oʻ" },
-    { "in": "ғишт", "out": "gʻisht", "note": "ғ is gʻ" },
-    { "in": "шаҳар", "out": "shahar", "note": "ш is sh, ҳ is h" },
-    { "in": "чироқ", "out": "chiroq", "note": "ч is ch, қ is q" },
-    { "in": "минг", "out": "ming", "note": "нг is ng" },
-    { "in": "ёмон", "out": "yomon", "note": "ё is yo" },
-    { "in": "юлдуз", "out": "yulduz", "note": "ю is yu" },
-    { "in": "яшил", "out": "yashil", "note": "я is ya" },
-    { "in": "эртага", "out": "ertaga", "note": "э is e" },
-    { "in": "маъно", "out": "maʼno", "note": "ъ is the separator" },
-    { "in": "журнал", "out": "jurnal", "note": "ж is j" },
-    { "in": "халқ", "out": "xalq", "note": "х is x" },
-    { "in": "сиркуляция", "out": "sirkulyatsiya", "note": "ц is ts, я is ya" },
-    { "in": "Тошкент", "out": "Toshkent", "note": "Ш at the start of a mixed-case word is Sh" },
-    { "in": "ТОШКЕНТ", "out": "TOSHKENT", "note": "all caps stays all caps" },
-    { "in": "Ўзбекистон", "out": "Oʻzbekiston", "note": "Ў is Oʻ" },
-    { "in": "салом @aziz", "out": "salom @aziz", "note": "a username is never transliterated" }
+    {
+      "in": "ўзбек",
+      "out": "oʻzbek",
+      "note": "ў is oʻ"
+    },
+    {
+      "in": "ғишт",
+      "out": "gʻisht",
+      "note": "ғ is gʻ"
+    },
+    {
+      "in": "шаҳар",
+      "out": "shahar",
+      "note": "ш is sh, ҳ is h"
+    },
+    {
+      "in": "чироқ",
+      "out": "chiroq",
+      "note": "ч is ch, қ is q"
+    },
+    {
+      "in": "минг",
+      "out": "ming",
+      "note": "нг is ng"
+    },
+    {
+      "in": "ёмон",
+      "out": "yomon",
+      "note": "ё is yo"
+    },
+    {
+      "in": "юлдуз",
+      "out": "yulduz",
+      "note": "ю is yu"
+    },
+    {
+      "in": "яшил",
+      "out": "yashil",
+      "note": "я is ya"
+    },
+    {
+      "in": "эртага",
+      "out": "ertaga",
+      "note": "э is e"
+    },
+    {
+      "in": "маъно",
+      "out": "maʼno",
+      "note": "ъ is the separator"
+    },
+    {
+      "in": "журнал",
+      "out": "jurnal",
+      "note": "ж is j"
+    },
+    {
+      "in": "халқ",
+      "out": "xalq",
+      "note": "х is x"
+    },
+    {
+      "in": "сиркуляция",
+      "out": "sirkulyatsiya",
+      "note": "ц is ts, я is ya"
+    },
+    {
+      "in": "Тошкент",
+      "out": "Toshkent",
+      "note": "Ш at the start of a mixed-case word is Sh"
+    },
+    {
+      "in": "ТОШКЕНТ",
+      "out": "TOSHKENT",
+      "note": "all caps stays all caps"
+    },
+    {
+      "in": "Ўзбекистон",
+      "out": "Oʻzbekiston",
+      "note": "Ў is Oʻ"
+    },
+    {
+      "in": "салом @aziz",
+      "out": "salom @aziz",
+      "note": "a username is never transliterated"
+    }
   ],
-
   "forSearch": [
-    { "in": "oʻzbek", "out": "ozbek", "note": "the oʻ mark is dropped so every spelling matches" },
-    { "in": "o'zbek", "out": "ozbek", "note": "an ASCII apostrophe matches the same key" },
-    { "in": "ЎЗБЕК", "out": "ozbek", "note": "Cyrillic folds to the same key" },
-    { "in": "Toshkent", "out": "toshkent", "note": "lowercased" },
-    { "in": "Тошкент", "out": "toshkent", "note": "and from Cyrillic" },
-    { "in": "maʼno", "out": "mano", "note": "the separator is dropped too" },
-    { "in": "  Salom   dunyo  ", "out": "salom dunyo", "note": "whitespace is collapsed" }
+    {
+      "in": "oʻzbek",
+      "out": "ozbek",
+      "note": "the oʻ mark is dropped so every spelling matches"
+    },
+    {
+      "in": "o'zbek",
+      "out": "ozbek",
+      "note": "an ASCII apostrophe matches the same key"
+    },
+    {
+      "in": "ЎЗБЕК",
+      "out": "ozbek",
+      "note": "Cyrillic folds to the same key"
+    },
+    {
+      "in": "Toshkent",
+      "out": "toshkent",
+      "note": "lowercased"
+    },
+    {
+      "in": "Тошкент",
+      "out": "toshkent",
+      "note": "and from Cyrillic"
+    },
+    {
+      "in": "maʼno",
+      "out": "mano",
+      "note": "the separator is dropped too"
+    },
+    {
+      "in": "  Salom   dunyo  ",
+      "out": "salom dunyo",
+      "note": "whitespace is collapsed"
+    }
   ]
 }

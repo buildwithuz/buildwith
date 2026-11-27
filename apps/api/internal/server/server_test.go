@@ -394,3 +394,26 @@ func TestDeleteAccountAnonymizes(t *testing.T) {
 func urlQuery(s string) string {
 	return strings.NewReplacer(" ", "%20", "'", "%27").Replace(s)
 }
+
+func TestMarkdownPreviewMatchesPublishing(t *testing.T) {
+	e := newEnv(t)
+	e.user("aziz", 10, false)
+	var out struct {
+		HTML           string `json:"html"`
+		ReadingMinutes int    `json:"reading_minutes"`
+		Toc            []struct{ ID string }
+	}
+	e.as("aziz").do("POST", "/v1/markdown/preview", map[string]string{
+		"body_md": "## Kirish\n\n<script>x()</script>\n\n**qalin** [havola](https://example.com)", "profile": "article",
+	}, &out, 200)
+	if strings.Contains(out.HTML, "<script") || !strings.Contains(out.HTML, "<strong>qalin</strong>") {
+		t.Fatalf("preview not sanitized/rendered: %s", out.HTML)
+	}
+	if !strings.Contains(out.HTML, `rel="nofollow ugc"`) {
+		t.Fatalf("low-karma author's links must be nofollow in preview too: %s", out.HTML)
+	}
+	if len(out.Toc) != 1 || out.Toc[0].ID != "kirish" || out.ReadingMinutes != 1 {
+		t.Fatalf("toc/reading: %+v", out)
+	}
+	e.anon().code("POST", "/v1/markdown/preview", map[string]string{"body_md": "x", "profile": "note"}, 401)
+}

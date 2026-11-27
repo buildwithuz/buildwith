@@ -502,6 +502,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/markdown/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Render Markdown exactly as it will be published
+         * @description Editors call this for their Preview tab. The server is the only Markdown
+         *     renderer and sanitizer, so the preview always matches what readers see.
+         */
+        post: operations["previewMarkdown"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/tags": {
         parameters: {
             query?: never;
@@ -2682,6 +2703,40 @@ export interface operations {
                 };
             };
             422: components["responses"]["Invalid"];
+            429: components["responses"]["TooMany"];
+        };
+    };
+    previewMarkdown: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    body_md: string;
+                    /** @enum {string} */
+                    profile: "comment" | "note" | "article";
+                };
+            };
+        };
+        responses: {
+            /** @description The rendered HTML. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        html: string;
+                        reading_minutes: number;
+                        toc: components["schemas"]["TocEntry"][];
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
             429: components["responses"]["TooMany"];
         };
     };

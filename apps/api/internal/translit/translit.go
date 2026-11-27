@@ -38,7 +38,7 @@ var loanStems = func() []string {
 
 // protected matches spans that are never transliterated: URLs, emails,
 // @usernames and #tags.
-var protected = regexp.MustCompile(`https?://\S+|www\.\S+|[\w.+-]+@[\w-]+(?:\.[\w-]+)+|[@#][\w-]+`)
+var protected = regexp.MustCompile(`https?://\S+|www\.\S+|[\w.+-]+@[\w-]+(?:\.[\w-]+)+|\b[A-Za-z_][\w-]*(?:\.[A-Za-z_][\w-]*)+|[@#][\w-]+`)
 
 func isApostrophe(r rune) bool {
 	switch r {
@@ -147,7 +147,43 @@ func casedAs(model rune, cyr string) string {
 	return cyr
 }
 
+// IsForeign reports whether a word should stay in Latin, as Uzbek Cyrillic
+// writers keep foreign words: Uzbek Latin has no w, never doubles o or e, and uses c only in ch;
+// camelCase is code, and an all-caps word of up to four letters, or without
+// vowels, is an acronym (API, AGPL, HTML).
+func IsForeign(w []rune) bool {
+	letters, upper, vowel := 0, 0, false
+	for i, r := range w {
+		switch {
+		case r == 'w' || r == 'W':
+			return true
+		case (r == 'c' || r == 'C') && (i+1 >= len(w) || (w[i+1] != 'h' && w[i+1] != 'H')):
+			return true
+		case i > 0 && unicode.IsUpper(r) && unicode.IsLower(w[i-1]):
+			return true
+		case i > 0 && (unicode.ToLower(r) == 'o' || unicode.ToLower(r) == 'e') && unicode.ToLower(w[i-1]) == unicode.ToLower(r):
+			return true
+		}
+		if unicode.IsLetter(r) {
+			letters++
+			if unicode.IsUpper(r) {
+				upper++
+			}
+			if strings.ContainsRune("AEIOU", r) {
+				vowel = true
+			}
+		}
+	}
+	if letters < 2 || upper != letters {
+		return false
+	}
+	return letters <= 4 || !vowel
+}
+
 func wordToCyrillic(w []rune) string {
+	if IsForeign(w) {
+		return string(w)
+	}
 	lower := strings.ToLower(string(w))
 	// The span of the word covered by a loanword stem, where ts means ц.
 	loanEnd := 0

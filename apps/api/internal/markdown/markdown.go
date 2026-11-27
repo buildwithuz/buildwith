@@ -144,7 +144,10 @@ func newEngine(p Profile) goldmark.Markdown {
 		goldmark.WithRendererOptions(
 			// Raw HTML in Markdown is escaped, never passed through.
 			gmhtml.WithHardWraps(),
-			renderer.WithNodeRenderers(util.Prioritized(&codeRenderer{}, 100)),
+			renderer.WithNodeRenderers(
+				util.Prioritized(&codeRenderer{}, 100),
+				util.Prioritized(&literalHTML{}, 100),
+			),
 		),
 	)
 }
@@ -173,6 +176,48 @@ func (r *codeRenderer) render(w util.BufWriter, src []byte, n ast.Node, entering
 		lang = string(f.Language(src))
 	}
 	_, _ = w.WriteString(Highlight(code.String(), lang))
+	return ast.WalkSkipChildren, nil
+}
+
+// literalHTML shows raw HTML as the text the author typed. The default would
+// drop it, and with it every word in the same block; on a site where people
+// write about <Components> and <div>s, showing it literally is what they mean.
+type literalHTML struct{}
+
+func (r *literalHTML) RegisterFuncs(reg renderer.NodeRendererFuncRegisterer) {
+	reg.Register(ast.KindHTMLBlock, r.block)
+	reg.Register(ast.KindRawHTML, r.inline)
+}
+
+func (r *literalHTML) block(w util.BufWriter, src []byte, n ast.Node, entering bool) (ast.WalkStatus, error) {
+	if !entering {
+		return ast.WalkContinue, nil
+	}
+	b := n.(*ast.HTMLBlock)
+	var text bytes.Buffer
+	lines := b.Lines()
+	for i := range lines.Len() {
+		seg := lines.At(i)
+		text.Write(seg.Value(src))
+	}
+	if b.HasClosure() {
+		text.Write(b.ClosureLine.Value(src))
+	}
+	_, _ = w.WriteString("<p>")
+	_, _ = w.WriteString(strings.ReplaceAll(html.EscapeString(strings.TrimRight(text.String(), "\n")), "\n", "<br>\n"))
+	_, _ = w.WriteString("</p>\n")
+	return ast.WalkSkipChildren, nil
+}
+
+func (r *literalHTML) inline(w util.BufWriter, src []byte, n ast.Node, entering bool) (ast.WalkStatus, error) {
+	if !entering {
+		return ast.WalkContinue, nil
+	}
+	segs := n.(*ast.RawHTML).Segments
+	for i := range segs.Len() {
+		seg := segs.At(i)
+		_, _ = w.WriteString(html.EscapeString(string(seg.Value(src))))
+	}
 	return ast.WalkSkipChildren, nil
 }
 

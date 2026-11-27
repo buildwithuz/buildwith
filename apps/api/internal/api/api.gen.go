@@ -688,6 +688,27 @@ func (e VoteValue) Valid() bool {
 	}
 }
 
+// Defines values for PreviewMarkdownJSONBodyProfile.
+const (
+	PreviewMarkdownJSONBodyProfileArticle PreviewMarkdownJSONBodyProfile = "article"
+	PreviewMarkdownJSONBodyProfileComment PreviewMarkdownJSONBodyProfile = "comment"
+	PreviewMarkdownJSONBodyProfileNote    PreviewMarkdownJSONBodyProfile = "note"
+)
+
+// Valid indicates whether the value is a known member of the PreviewMarkdownJSONBodyProfile enum.
+func (e PreviewMarkdownJSONBodyProfile) Valid() bool {
+	switch e {
+	case PreviewMarkdownJSONBodyProfileArticle:
+		return true
+	case PreviewMarkdownJSONBodyProfileComment:
+		return true
+	case PreviewMarkdownJSONBodyProfileNote:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for ResolveReportJSONBodyStatus.
 const (
 	Actioned  ResolveReportJSONBodyStatus = "actioned"
@@ -1425,6 +1446,15 @@ type PromoteNoteJSONBody struct {
 	Title string    `json:"title"`
 }
 
+// PreviewMarkdownJSONBody defines body for PreviewMarkdown for application/json ContentType.
+type PreviewMarkdownJSONBody struct {
+	BodyMd  string                         `json:"body_md"`
+	Profile PreviewMarkdownJSONBodyProfile `json:"profile"`
+}
+
+// PreviewMarkdownJSONBodyProfile defines model for PreviewMarkdownJSONBody.Profile.
+type PreviewMarkdownJSONBodyProfile string
+
 // ListBookmarksParams defines parameters for ListBookmarks.
 type ListBookmarksParams struct {
 	// Cursor The `nextCursor` from the previous page. Opaque; do not construct one.
@@ -1687,6 +1717,9 @@ type UpdateLinkJSONRequestBody UpdateLinkJSONBody
 // PromoteNoteJSONRequestBody defines body for PromoteNote for application/json ContentType.
 type PromoteNoteJSONRequestBody PromoteNoteJSONBody
 
+// PreviewMarkdownJSONRequestBody defines body for PreviewMarkdown for application/json ContentType.
+type PreviewMarkdownJSONRequestBody PreviewMarkdownJSONBody
+
 // AddMutedWordJSONRequestBody defines body for AddMutedWord for application/json ContentType.
 type AddMutedWordJSONRequestBody AddMutedWordJSONBody
 
@@ -1842,6 +1875,9 @@ type ServerInterface interface {
 	// PromoteNote Turn one of your notes into a link post
 	// (POST /links/{id}/promote-note)
 	PromoteNote(w http.ResponseWriter, r *http.Request, id ID)
+	// PreviewMarkdown Render Markdown exactly as it will be published
+	// (POST /markdown/preview)
+	PreviewMarkdown(w http.ResponseWriter, r *http.Request)
 	// ListBookmarks Your bookmarked notes
 	// (GET /me/bookmarks)
 	ListBookmarks(w http.ResponseWriter, r *http.Request, params ListBookmarksParams)
@@ -3074,6 +3110,20 @@ func (siw *ServerInterfaceWrapper) PromoteNote(w http.ResponseWriter, r *http.Re
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.PromoteNote(w, r, id)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// PreviewMarkdown operation middleware
+func (siw *ServerInterfaceWrapper) PreviewMarkdown(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.PreviewMarkdown(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -5029,6 +5079,7 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/who-to-follow", wrapper.WhoToFollow)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/open-to-work", wrapper.ListOpenToWork)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/media", wrapper.UploadMedia)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/markdown/preview", wrapper.PreviewMarkdown)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/tags", wrapper.ListTags)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/tags/{slug}", wrapper.GetTag)
 	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/tags/{slug}/follow", wrapper.UnfollowTag)
@@ -6659,6 +6710,69 @@ func (response PromoteNote409JSONResponse) VisitPromoteNoteResponse(w http.Respo
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PreviewMarkdownRequestObject struct {
+	Body *PreviewMarkdownJSONRequestBody
+}
+
+type PreviewMarkdownResponseObject interface {
+	VisitPreviewMarkdownResponse(w http.ResponseWriter) error
+}
+
+type PreviewMarkdown200JSONResponse struct {
+	Html           string     `json:"html"`
+	ReadingMinutes int        `json:"reading_minutes"`
+	Toc            []TocEntry `json:"toc"`
+}
+
+func (response PreviewMarkdown200JSONResponse) VisitPreviewMarkdownResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := runtime.JSONMarshalWrite(&buf, response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PreviewMarkdown401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response PreviewMarkdown401JSONResponse) VisitPreviewMarkdownResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := runtime.JSONMarshalWrite(&buf, response.UnauthorizedJSONResponse); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PreviewMarkdown429JSONResponse struct{ TooManyJSONResponse }
+
+func (response PreviewMarkdown429JSONResponse) VisitPreviewMarkdownResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := runtime.JSONMarshalWrite(&buf, response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	if response.Headers.RetryAfter != nil {
+		{
+			v, err := runtime.StyleParamWithOptions("simple", false, "Retry-After", *response.Headers.RetryAfter, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "integer", Format: ""})
+			if err != nil {
+				return fmt.Errorf("error styling response header Retry-After: %w", err)
+			}
+			w.Header().Set("Retry-After", v)
+		}
+	}
+	w.WriteHeader(429)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -9455,6 +9569,9 @@ type StrictServerInterface interface {
 	// PromoteNote Turn one of your notes into a link post
 	// (POST /links/{id}/promote-note)
 	PromoteNote(ctx context.Context, request PromoteNoteRequestObject) (PromoteNoteResponseObject, error)
+	// PreviewMarkdown Render Markdown exactly as it will be published
+	// (POST /markdown/preview)
+	PreviewMarkdown(ctx context.Context, request PreviewMarkdownRequestObject) (PreviewMarkdownResponseObject, error)
 	// ListBookmarks Your bookmarked notes
 	// (GET /me/bookmarks)
 	ListBookmarks(ctx context.Context, request ListBookmarksRequestObject) (ListBookmarksResponseObject, error)
@@ -10595,6 +10712,37 @@ func (sh *strictHandler) PromoteNote(w http.ResponseWriter, r *http.Request, id 
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(PromoteNoteResponseObject); ok {
 		if err := validResponse.VisitPromoteNoteResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// PreviewMarkdown operation middleware
+func (sh *strictHandler) PreviewMarkdown(w http.ResponseWriter, r *http.Request) {
+	var request PreviewMarkdownRequestObject
+
+	var body PreviewMarkdownJSONRequestBody
+	if err := runtime.BindJSONBody(r, &body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request any) (any, error) {
+		return sh.ssi.PreviewMarkdown(ctx, request.(PreviewMarkdownRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "PreviewMarkdown")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(PreviewMarkdownResponseObject); ok {
+		if err := validResponse.VisitPreviewMarkdownResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

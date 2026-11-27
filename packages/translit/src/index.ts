@@ -7,7 +7,8 @@ export const TUTUQ = 'ʼ' // ʼ the separator in maʼno
 
 const loanStems: readonly string[] = loanwords.stems
 
-const PROTECTED = /https?:\/\/\S+|www\.\S+|[\w.+-]+@[\w-]+(?:\.[\w-]+)+|[@#][\w-]+/g
+const PROTECTED =
+  /https?:\/\/\S+|www\.\S+|[\w.+-]+@[\w-]+(?:\.[\w-]+)+|\b[A-Za-z_][\w-]*(?:\.[A-Za-z_][\w-]*)+|[@#][\w-]+/g
 const APOSTROPHES = new Set(["'", '’', '‘', '`', TUTUQ, OKINA])
 
 const isLetter = (c: string | undefined): boolean => c !== undefined && /\p{L}/u.test(c)
@@ -53,15 +54,53 @@ function eachChunk(s: string, f: (chunk: string[], word: boolean) => string): st
 }
 
 const LATIN_SINGLE: Record<string, string> = {
-  a: 'а', b: 'б', d: 'д', e: 'е', f: 'ф', g: 'г', h: 'ҳ', i: 'и', j: 'ж', k: 'к', l: 'л', m: 'м',
-  n: 'н', o: 'о', p: 'п', q: 'қ', r: 'р', s: 'с', t: 'т', u: 'у', v: 'в', x: 'х', y: 'й', z: 'з',
-  c: 'к', w: 'в',
+  a: 'а',
+  b: 'б',
+  d: 'д',
+  e: 'е',
+  f: 'ф',
+  g: 'г',
+  h: 'ҳ',
+  i: 'и',
+  j: 'ж',
+  k: 'к',
+  l: 'л',
+  m: 'м',
+  n: 'н',
+  o: 'о',
+  p: 'п',
+  q: 'қ',
+  r: 'р',
+  s: 'с',
+  t: 'т',
+  u: 'у',
+  v: 'в',
+  x: 'х',
+  y: 'й',
+  z: 'з',
+  c: 'к',
+  w: 'в',
 }
 const LATIN_Y: Record<string, string> = { e: 'е', o: 'ё', u: 'ю', a: 'я' }
 
 const cased = (model: string, cyr: string): string => (isUpper(model) ? cyr.toUpperCase() : cyr)
 
+/**
+ * Foreign words stay in Latin, as Uzbek Cyrillic writers keep them: Uzbek Latin
+ * has no w, never doubles o or e, and uses c only in ch; camelCase is code, and an all-caps word of up
+ * to four letters, or without vowels, is an acronym (API, AGPL, HTML).
+ */
+export function isForeign(w: string[]): boolean {
+  const s = w.join('')
+  if (/[wW]/.test(s) || /[cC](?![hH])/.test(s) || /oo|ee/i.test(s)) return true
+  if (/[a-z][A-Z]/.test(s)) return true
+  const letters = w.filter(isLetter)
+  if (letters.length < 2 || !letters.every(isUpper)) return false
+  return letters.length <= 4 || !letters.some((c) => 'AEIOU'.includes(c))
+}
+
 function wordToCyrillic(w: string[]): string {
+  if (isForeign(w)) return w.join('')
   const lower = w.join('').toLowerCase()
   let loanEnd = 0
   for (const stem of loanStems) if (lower.startsWith(stem)) loanEnd = Math.max(loanEnd, [...stem].length)
@@ -102,10 +141,42 @@ function wordToCyrillic(w: string[]): string {
 }
 
 const CYR_SINGLE: Record<string, string> = {
-  а: 'a', б: 'b', в: 'v', г: 'g', ғ: `g${OKINA}`, д: 'd', ё: 'yo', ж: 'j', з: 'z', и: 'i', й: 'y',
-  к: 'k', қ: 'q', л: 'l', м: 'm', н: 'n', о: 'o', ў: `o${OKINA}`, п: 'p', р: 'r', с: 's', т: 't',
-  у: 'u', ф: 'f', х: 'x', ҳ: 'h', ц: 'ts', ч: 'ch', ш: 'sh', ъ: TUTUQ, ь: '', э: 'e', ю: 'yu',
-  я: 'ya', ы: 'i', щ: 'sh',
+  а: 'a',
+  б: 'b',
+  в: 'v',
+  г: 'g',
+  ғ: `g${OKINA}`,
+  д: 'd',
+  ё: 'yo',
+  ж: 'j',
+  з: 'z',
+  и: 'i',
+  й: 'y',
+  к: 'k',
+  қ: 'q',
+  л: 'l',
+  м: 'm',
+  н: 'n',
+  о: 'o',
+  ў: `o${OKINA}`,
+  п: 'p',
+  р: 'r',
+  с: 's',
+  т: 't',
+  у: 'u',
+  ф: 'f',
+  х: 'x',
+  ҳ: 'h',
+  ц: 'ts',
+  ч: 'ch',
+  ш: 'sh',
+  ъ: TUTUQ,
+  ь: '',
+  э: 'e',
+  ю: 'yu',
+  я: 'ya',
+  ы: 'i',
+  щ: 'sh',
 }
 const CYR_VOWELS = 'аеёиоуўэюя'
 
@@ -131,7 +202,9 @@ function wordToLatin(w: string[]): string {
 
 /** Latin Uzbek → Cyrillic. URLs, emails, @usernames and #tags are left alone. */
 export function toCyrillic(s: string): string {
-  return mapUnprotected(normalize(s), (part) => eachChunk(part, (w, word) => (word ? wordToCyrillic(w) : w.join(''))))
+  return mapUnprotected(normalize(s), (part) =>
+    eachChunk(part, (w, word) => (word ? wordToCyrillic(w) : w.join(''))),
+  )
 }
 
 /** Cyrillic Uzbek → Latin. URLs, emails, @usernames and #tags are left alone. */
@@ -179,7 +252,10 @@ export function displayHTML(html: string, script: Script): string {
     const selfClosing = attrs!.trimEnd().endsWith('/') || VOID.has(name)
     if (closing) {
       if (skip.at(-1) === name) skip.pop()
-    } else if (!selfClosing && (skip.length || SKIP_TAGS.has(name) || /translate\s*=\s*["']?no/i.test(attrs!))) {
+    } else if (
+      !selfClosing &&
+      (skip.length || SKIP_TAGS.has(name) || /translate\s*=\s*["']?no/i.test(attrs!))
+    ) {
       skip.push(name)
     }
   }
@@ -187,7 +263,20 @@ export function displayHTML(html: string, script: Script): string {
   return out + (skip.length ? tail : toCyrillicText(tail))
 }
 
-const VOID = new Set(['br', 'hr', 'img', 'input', 'meta', 'link', 'source', 'wbr', 'area', 'col', 'embed', 'track'])
+const VOID = new Set([
+  'br',
+  'hr',
+  'img',
+  'input',
+  'meta',
+  'link',
+  'source',
+  'wbr',
+  'area',
+  'col',
+  'embed',
+  'track',
+])
 
 // Text between tags may hold entities like &amp; — keep them intact.
 function toCyrillicText(text: string): string {

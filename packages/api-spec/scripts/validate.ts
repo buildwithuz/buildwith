@@ -1,8 +1,8 @@
 // Parses openapi.yaml and checks the house rules that OpenAPI itself cannot express,
 // so a contract mistake fails in CI rather than in a generated client.
 import { readFileSync } from 'node:fs'
-import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { parse } from 'yaml'
 
 const here = dirname(fileURLToPath(import.meta.url))

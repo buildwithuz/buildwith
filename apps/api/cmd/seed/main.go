@@ -16,6 +16,7 @@ import (
 	"github.com/buildwithuz/buildwith/apps/api/internal/markdown"
 	"github.com/buildwithuz/buildwith/apps/api/internal/rank"
 	"github.com/buildwithuz/buildwith/apps/api/internal/slug"
+	"github.com/buildwithuz/buildwith/apps/api/internal/translit"
 	"github.com/buildwithuz/buildwith/apps/api/internal/urlx"
 )
 
@@ -166,6 +167,8 @@ func seed(ctx context.Context, q *dbgen.Queries, tx pgx.Tx) error {
 			[]string{"aziz", "jasur"}, [][2]string{{"jasur", "Men bor! Payme ofisida joy topishimiz mumkin."}}},
 	}
 	for _, p := range posts {
+		// Same normalization the API applies to every submission.
+		p.title, p.body = translit.Normalize(p.title), translit.Normalize(p.body)
 		arg := dbgen.CreateLinkParams{AuthorID: ids[p.author], Kind: p.kind, Title: p.title, Slug: slug.Make(p.title, 60)}
 		if p.url != "" {
 			c, err := urlx.Canonicalize(p.url)

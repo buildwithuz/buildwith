@@ -63,6 +63,7 @@ var (
 	Votes        = Rule{"votes", 600, time.Hour}
 	Reports      = Rule{"reports", 30, day}
 	SignIn       = Rule{"signin", 30, 10 * time.Minute}
+	Previews     = Rule{"previews", 120, time.Minute}
 )
 
 // For picks the new-account rule when the account is younger than a week.

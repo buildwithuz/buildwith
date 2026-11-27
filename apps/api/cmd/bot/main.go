@@ -104,8 +104,9 @@ func handle(ctx context.Context, q *dbgen.Queries, u telegram.Update) string {
 		_ = q.SetTelegramNotify(ctx, dbgen.SetTelegramNotifyParams{UserID: user.ID, Notify: true})
 		return i18n.T(user.Lang, "bot.start_linked", nil)
 	case "/stop":
+		// Forget the chat entirely, as the privacy page promises; /start links it again.
 		if t, err := q.GetTelegramByChat(ctx, m.Chat.ID); err == nil {
-			_ = q.SetTelegramNotify(ctx, dbgen.SetTelegramNotifyParams{UserID: t.UserID, Notify: false})
+			_, _ = q.UnlinkTelegram(ctx, t.UserID)
 		}
 		return i18n.T(l, "bot.stopped", nil)
 	}

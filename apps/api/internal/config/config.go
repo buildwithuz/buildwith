@@ -108,9 +108,6 @@ func Load() (Config, error) {
 		if !strings.HasPrefix(c.PublicOrigin, "https://") {
 			problems = append(problems, errors.New("BUILDWITH_PUBLIC_ORIGIN must be https in production"))
 		}
-		if len(os.Getenv("BUILDWITH_SESSION_SECRET")) < 32 {
-			problems = append(problems, errors.New("BUILDWITH_SESSION_SECRET must be at least 32 characters in production"))
-		}
 	}
 
 	return c, errors.Join(problems...)

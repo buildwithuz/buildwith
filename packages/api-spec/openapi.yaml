@@ -595,6 +595,39 @@ paths:
         "422": { $ref: "#/components/responses/Invalid" }
         "429": { $ref: "#/components/responses/TooMany" }
 
+  /markdown/preview:
+    post:
+      operationId: previewMarkdown
+      tags: [media]
+      summary: Render Markdown exactly as it will be published
+      description: |
+        Editors call this for their Preview tab. The server is the only Markdown
+        renderer and sanitizer, so the preview always matches what readers see.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [body_md, profile]
+              properties:
+                body_md: { type: string, maxLength: 200000 }
+                profile: { type: string, enum: [comment, note, article] }
+      responses:
+        "200":
+          description: The rendered HTML.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [html, reading_minutes, toc]
+                properties:
+                  html: { type: string }
+                  reading_minutes: { type: integer }
+                  toc: { type: array, items: { $ref: "#/components/schemas/TocEntry" } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "429": { $ref: "#/components/responses/TooMany" }
+
   /tags:
     get:
       operationId: listTags
@@ -786,7 +819,12 @@ paths:
       summary: The whole comment thread for one link or article
       security: []
       parameters:
-        - { name: subject_type, in: query, required: true, schema: { $ref: "#/components/schemas/CommentSubject" } }
+        - {
+            name: subject_type,
+            in: query,
+            required: true,
+            schema: { $ref: "#/components/schemas/CommentSubject" },
+          }
         - { name: subject_id, in: query, required: true, schema: { type: integer, format: int64 } }
         - { name: sort, in: query, schema: { $ref: "#/components/schemas/CommentSort" } }
         - $ref: "#/components/parameters/Limit"
@@ -901,7 +939,12 @@ paths:
       tags: [votes]
       summary: Take your vote back
       parameters:
-        - { name: subject_type, in: query, required: true, schema: { $ref: "#/components/schemas/VoteSubject" } }
+        - {
+            name: subject_type,
+            in: query,
+            required: true,
+            schema: { $ref: "#/components/schemas/VoteSubject" },
+          }
         - { name: subject_id, in: query, required: true, schema: { type: integer, format: int64 } }
       responses:
         "200": { $ref: "#/components/responses/VoteState" }
@@ -932,7 +975,12 @@ paths:
       tags: [votes]
       summary: Take your flag back
       parameters:
-        - { name: subject_type, in: query, required: true, schema: { $ref: "#/components/schemas/FlagSubject" } }
+        - {
+            name: subject_type,
+            in: query,
+            required: true,
+            schema: { $ref: "#/components/schemas/FlagSubject" },
+          }
         - { name: subject_id, in: query, required: true, schema: { type: integer, format: int64 } }
       responses:
         "204": { description: Unflagged. }
@@ -1905,9 +1953,9 @@ components:
         status: { type: string, enum: [ok, degraded] }
         version: { type: string }
 
-    Lang:   { type: string, enum: [uz, ru, en] }
+    Lang: { type: string, enum: [uz, ru, en] }
     Script: { type: string, enum: [latn, cyrl] }
-    Theme:  { type: string, enum: [system, light, dark] }
+    Theme: { type: string, enum: [system, light, dark] }
     Accent: { type: string, enum: [lapis, turquoise, saffron, plum, moss] }
     OAuthProvider: { type: string, enum: [github, google] }
     MediaKind: { type: string, enum: [avatar, banner, note, article, cover] }
@@ -2082,8 +2130,7 @@ components:
 
     Link:
       type: object
-      required:
-        [id, kind, title, slug, author, points, comment_count, created_at, path, tags, viewer_vote]
+      required: [id, kind, title, slug, author, points, comment_count, created_at, path, tags, viewer_vote]
       properties:
         id: { type: integer, format: int64 }
         kind: { $ref: "#/components/schemas/LinkKind" }
@@ -2152,8 +2199,7 @@ components:
 
     Note:
       type: object
-      required:
-        [id, author, body_html, like_count, repost_count, reply_count, created_at, path, media]
+      required: [id, author, body_html, like_count, repost_count, reply_count, created_at, path, media]
       properties:
         id: { type: integer, format: int64 }
         author: { $ref: "#/components/schemas/User" }
@@ -2341,8 +2387,20 @@ components:
         id: { type: integer, format: int64 }
         kind:
           type: string
-          enum: [reply, mention, like, repost, quote, follow, comment,
-                 article_published, mod_action, badge, featured]
+          enum:
+            [
+              reply,
+              mention,
+              like,
+              repost,
+              quote,
+              follow,
+              comment,
+              article_published,
+              mod_action,
+              badge,
+              featured,
+            ]
         actor:
           oneOf:
             - $ref: "#/components/schemas/User"

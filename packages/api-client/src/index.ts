@@ -34,6 +34,8 @@ export interface ClientOptions {
   cookie?: string | null
   /** The CSRF token for mutations. */
   csrf?: string
+  /** The incoming X-Forwarded-For header, so the API sees the visitor's address, not ours. */
+  forwardedFor?: string | null
   fetch?: typeof fetch
 }
 
@@ -41,6 +43,7 @@ export function createClient(opts: ClientOptions): ApiClient {
   const headers: Record<string, string> = {}
   if (opts.cookie) headers.cookie = opts.cookie
   if (opts.csrf) headers['x-csrf-token'] = opts.csrf
+  if (opts.forwardedFor) headers['x-forwarded-for'] = opts.forwardedFor
   return createFetchClient<paths>({
     baseUrl: `${opts.baseUrl}/v1`,
     headers,

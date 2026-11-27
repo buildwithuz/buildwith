@@ -12,7 +12,11 @@ func TestRenderSanitizes(t *testing.T) {
 		want, wantNot []string
 	}{
 		{name: "raw html is escaped", in: "<script>alert(1)</script>", profile: Article,
-			wantNot: []string{"<script"}},
+			want: []string{"&lt;script&gt;alert(1)&lt;/script&gt;"}, wantNot: []string{"<script"}},
+		{name: "raw html block keeps the words around it", in: "<div>salom</div> **dunyo**", profile: Comment,
+			want: []string{"&lt;div&gt;salom&lt;/div&gt;"}, wantNot: []string{"<div>"}},
+		{name: "inline tags in prose are shown literally", in: "Use the <Button> component", profile: Comment,
+			want: []string{"Use the &lt;Button&gt; component"}},
 		{name: "javascript links are dropped", in: "[x](javascript:alert(1))", profile: Comment,
 			wantNot: []string{"javascript:"}},
 		{name: "inline formatting", in: "**bold** _it_ `code` ~~del~~", profile: Comment,

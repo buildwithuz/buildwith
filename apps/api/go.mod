@@ -3,6 +3,17 @@ module github.com/buildwithuz/buildwith/apps/api
 go 1.26.0
 
 require (
+	github.com/alecthomas/chroma/v2 v2.27.0
+	github.com/jackc/pgx/v5 v5.13.0
+	github.com/microcosm-cc/bluemonday v1.0.27
+	github.com/oapi-codegen/runtime v1.9.1
+	github.com/pressly/goose/v3 v3.30.2
+	github.com/yuin/goldmark v1.8.7
+	golang.org/x/image v0.48.0
+	golang.org/x/net v0.63.0
+)
+
+require (
 	cel.dev/expr v0.25.3 // indirect
 	filippo.io/edwards25519 v1.2.0 // indirect
 	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.24.0 // indirect
@@ -12,7 +23,6 @@ require (
 	github.com/BurntSushi/toml v1.4.1-0.20240526193622-a339e1f7089c // indirect
 	github.com/ClickHouse/ch-go v0.75.0 // indirect
 	github.com/ClickHouse/clickhouse-go/v2 v2.51.0 // indirect
-	github.com/alecthomas/chroma/v2 v2.27.0 // indirect
 	github.com/andybalholm/brotli v1.3.0 // indirect
 	github.com/antlr4-go/antlr/v4 v4.13.1 // indirect
 	github.com/apapsch/go-jsonmerge/v2 v2.0.0 // indirect
@@ -42,7 +52,6 @@ require (
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
 	github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 // indirect
-	github.com/jackc/pgx/v5 v5.13.0 // indirect
 	github.com/jackc/puddle/v2 v2.2.3 // indirect
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/joho/godotenv v1.5.1 // indirect
@@ -52,13 +61,11 @@ require (
 	github.com/mattn/go-isatty v0.0.24 // indirect
 	github.com/mfridman/interpolate v0.2.0 // indirect
 	github.com/mfridman/xflag v0.1.0 // indirect
-	github.com/microcosm-cc/bluemonday v1.0.27 // indirect
 	github.com/microsoft/go-mssqldb v1.11.2 // indirect
 	github.com/ncruces/go-sqlite3 v0.32.0 // indirect
 	github.com/ncruces/go-strftime v1.1.0 // indirect
 	github.com/ncruces/julianday v1.0.0 // indirect
 	github.com/oapi-codegen/oapi-codegen/v2 v2.9.0 // indirect
-	github.com/oapi-codegen/runtime v1.9.1 // indirect
 	github.com/oasdiff/yaml v0.1.3 // indirect
 	github.com/oasdiff/yaml3 v0.0.16 // indirect
 	github.com/paulmach/orb v0.14.0 // indirect
@@ -69,7 +76,6 @@ require (
 	github.com/pingcap/log v1.1.0 // indirect
 	github.com/pingcap/tidb/pkg/parser v0.0.0-20260418072757-ce92298d1124 // indirect
 	github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c // indirect
-	github.com/pressly/goose/v3 v3.30.2 // indirect
 	github.com/prometheus/procfs v0.23.0 // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
 	github.com/riza-io/grpc-go v0.2.0 // indirect
@@ -92,7 +98,6 @@ require (
 	github.com/ydb-platform/ydb-go-sdk/v3 v3.156.1 // indirect
 	github.com/ydb-platform/ydb-go-yc v0.12.5 // indirect
 	github.com/ydb-platform/ydb-go-yc-metadata v0.6.2 // indirect
-	github.com/yuin/goldmark v1.8.7 // indirect
 	github.com/ziutek/mymysql v1.5.4 // indirect
 	go.opentelemetry.io/otel v1.47.0 // indirect
 	go.opentelemetry.io/otel/trace v1.47.0 // indirect
@@ -103,9 +108,7 @@ require (
 	golang.org/x/crypto v0.59.0 // indirect
 	golang.org/x/exp v0.0.0-20261109185158-a52e3aef5920 // indirect
 	golang.org/x/exp/typeparams v0.0.0-20231108232855-2478ac86f678 // indirect
-	golang.org/x/image v0.48.0 // indirect
 	golang.org/x/mod v0.43.0 // indirect
-	golang.org/x/net v0.63.0 // indirect
 	golang.org/x/sync v0.25.0 // indirect
 	golang.org/x/sys v0.50.0 // indirect
 	golang.org/x/telemetry v0.0.0-20261116191925-e77a43154acb // indirect
