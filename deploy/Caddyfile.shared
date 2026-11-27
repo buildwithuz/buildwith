@@ -19,6 +19,7 @@
 
 import site.caddy
 
-http://{$BUILDWITH_DOMAIN} {
+# Any host: the front proxy decides which names reach us (e.g. a temporary preview name).
+:80 {
 	import buildwith_site
 }
