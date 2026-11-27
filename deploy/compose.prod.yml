@@ -1,0 +1,208 @@
+# Production stack for one server. Run it through deploy/deploy.sh, or by hand with
+#   docker compose --env-file /srv/buildwith/.env.production -f deploy/compose.prod.yml <command>
+# Sized for 4 vCPU / 8 GB: limits add up to ~5.5 GB, the rest is page cache for Postgres and image builds.
+name: buildwith
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "20m"
+    max-file: "5"
+
+x-api-image: &api-image
+  image: buildwith-api:${BUILDWITH_IMAGE_TAG:-latest}
+
+# Everything the Go binaries read. The database URL is assembled here so the
+# password lives in one variable.
+x-api-env: &api-env
+  env_file:
+    - path: ${BUILDWITH_ENV_FILE:-../.env.production}
+      required: true
+  environment:
+    BUILDWITH_ENV: production
+    BUILDWITH_DATABASE_URL: postgres://buildwith:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env.production}@db:5432/buildwith?sslmode=disable
+    BUILDWITH_API_ADDR: ":8080"
+    BUILDWITH_MEDIA_DIR: /data/media
+    TZ: UTC
+
+services:
+  db:
+    image: postgres:17
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: buildwith
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env.production}
+      POSTGRES_DB: buildwith
+      POSTGRES_INITDB_ARGS: --encoding=UTF8 --locale=C.UTF-8
+    command:
+      - postgres
+      - -c
+      - shared_buffers=1GB
+      - -c
+      - effective_cache_size=4GB
+      - -c
+      - work_mem=16MB
+      - -c
+      - maintenance_work_mem=256MB
+      - -c
+      - max_connections=100
+      - -c
+      - random_page_cost=1.1
+      - -c
+      - log_min_duration_statement=500ms
+    shm_size: 512m
+    volumes:
+      - db:/var/lib/postgresql/data
+    # No ports: only reachable from the compose network.
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U buildwith -d buildwith"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
+    stop_grace_period: 60s
+    deploy:
+      resources:
+        limits: { cpus: "2", memory: 2g }
+    logging: *logging
+
+  # One-shot; deploy.sh runs it with `run --rm migrate`. The profile keeps a
+  # plain `up -d` from re-running it (or running an older image's migrations on rollback).
+  migrate:
+    <<: [*api-image, *api-env]
+    profiles: [migrate]
+    pull_policy: never
+    command: ["migrate", "up"]
+    restart: "no"
+    depends_on:
+      db: { condition: service_healthy }
+    deploy:
+      resources:
+        limits: { cpus: "1", memory: 256m }
+    logging: *logging
+
+  api:
+    <<: [*api-image, *api-env]
+    build:
+      context: ..
+      dockerfile: apps/api/Dockerfile
+      args:
+        VERSION: ${BUILDWITH_IMAGE_TAG:-dev}
+    command: ["server"]
+    restart: unless-stopped
+    depends_on:
+      db: { condition: service_healthy }
+    volumes:
+      - ${BUILDWITH_DATA_DIR:-/srv/buildwith/data}/media:/data/media
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8080/v1/health >/dev/null || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+    stop_grace_period: 20s
+    deploy:
+      resources:
+        limits: { cpus: "2", memory: 1g }
+    logging: *logging
+
+  worker:
+    <<: [*api-image, *api-env]
+    pull_policy: never
+    command: ["worker"]
+    restart: unless-stopped
+    depends_on:
+      db: { condition: service_healthy }
+    volumes:
+      - ${BUILDWITH_DATA_DIR:-/srv/buildwith/data}/media:/data/media
+    healthcheck: { disable: true }
+    stop_grace_period: 30s
+    deploy:
+      resources:
+        limits: { cpus: "1", memory: 768m }
+    logging: *logging
+
+  # Only when Telegram is configured: deploy.sh enables the profile if
+  # BUILDWITH_TELEGRAM_BOT_TOKEN is set.
+  bot:
+    <<: [*api-image, *api-env]
+    profiles: [telegram]
+    pull_policy: never
+    command: ["bot"]
+    restart: unless-stopped
+    depends_on:
+      db: { condition: service_healthy }
+    healthcheck: { disable: true }
+    deploy:
+      resources:
+        limits: { cpus: "0.5", memory: 256m }
+    logging: *logging
+
+  web:
+    image: buildwith-web:${BUILDWITH_IMAGE_TAG:-latest}
+    build:
+      context: ..
+      dockerfile: apps/web/Dockerfile
+      args:
+        VERSION: ${BUILDWITH_IMAGE_TAG:-dev}
+    restart: unless-stopped
+    # web needs no secrets: it talks to the API like a browser does.
+    environment:
+      NODE_ENV: production
+      PORT: "3000"
+      BUILDWITH_API_ORIGIN: http://api:8080
+      NODE_OPTIONS: --max-old-space-size=768
+      TZ: UTC
+    depends_on:
+      api: { condition: service_healthy }
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:3000/healthz').then(r=>process.exit(r.ok?0:1),()=>process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 15s
+    deploy:
+      resources:
+        limits: { cpus: "2", memory: 1g }
+    logging: *logging
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp" # HTTP/3
+    environment:
+      BUILDWITH_DOMAIN: ${BUILDWITH_DOMAIN:-buildwith.uz}
+      BUILDWITH_ACME_EMAIL: ${BUILDWITH_ACME_EMAIL:-admin@buildwith.uz}
+    volumes:
+      # The whole folder, not the file: git replaces files on checkout and a single-file
+      # bind mount would keep pointing at the old one, so `caddy reload` would see stale config.
+      - ./:/etc/caddy:ro
+      - ${BUILDWITH_DATA_DIR:-/srv/buildwith/data}/media:/srv/media:ro
+      - caddy_data:/data # certificates and ACME account: back this up or lose rate-limit headroom
+      - caddy_config:/config
+    depends_on:
+      - web
+      - api
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:2019/config/"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+    deploy:
+      resources:
+        limits: { cpus: "1", memory: 256m }
+    logging: *logging
+
+volumes:
+  db:
+  caddy_data:
+  caddy_config:

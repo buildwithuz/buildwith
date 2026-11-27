@@ -1,4 +1,5 @@
 ---
+
 name: api-endpoint
 description: Add or change an HTTP API endpoint in apps/api (contract-first with OpenAPI, sqlc queries, handler, tests, regenerated TS client). Use for any backend route work.
 ---
@@ -31,6 +32,7 @@ The OpenAPI file is the contract. Web and API never drift because both are gener
 8. `pnpm check`, then the `pr-ready` skill.
 
 ## Don't
+
 - Don't hand-edit generated code (`*.gen.go`, `packages/api-client/src/generated/`).
 - Don't return internal errors to clients; log with `slog` and return a coded error.
 - Don't add an endpoint the web app doesn't need yet.

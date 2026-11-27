@@ -1,4 +1,5 @@
 ---
+
 name: ui-component
 description: Build or change UI in packages/ui or apps/web following the buildwith.uz design system (tokens, Radix primitives, accessibility, dark mode, Latin/Cyrillic, no-JS fallback). Use for any visual or interaction change.
 ---
@@ -6,6 +7,7 @@ description: Build or change UI in packages/ui or apps/web following the buildwi
 # UI work
 
 ## Design language
+
 Calm, warm, typographic. It should feel like a well-made book that happens to be fast, not like a dashboard.
 
 - **Colors** (tokens in `packages/ui/src/tokens.css`, never raw hex in components):
@@ -21,6 +23,7 @@ Calm, warm, typographic. It should feel like a well-made book that happens to be
 - **Icons:** Lucide, 16/20 px, stroke 1.75.
 
 ## Rules
+
 1. Components live in `packages/ui/src/components/<Name>/` with `<Name>.tsx`, `<Name>.stories.tsx`, `<Name>.test.tsx`.
 2. Interactive primitives (dialog, menu, popover, tabs, tooltip, combobox) wrap **Radix**. Don't hand-roll focus management.
 3. **Accessibility:** keyboard reachable, visible focus ring (`ring-lapis`), labels on every control, contrast ≥ 4.5:1 (check both themes),
@@ -32,6 +35,7 @@ Calm, warm, typographic. It should feel like a well-made book that happens to be
 8. Keyboard shortcuts (j/k, l like, r reply, n new note, / search, ⌘K command palette) are registered through `useShortcut` so they're listed in the `?` help dialog.
 
 ## Done when
+
 - Story covers: default, loading, empty, error, long text (Russian), Cyrillic, dark mode.
 - Vitest + Testing Library test for behaviour; axe check in the story passes.
 - Screenshots (light + dark, 360 px + desktop) attached to the PR.

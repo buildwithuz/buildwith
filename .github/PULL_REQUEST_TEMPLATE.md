@@ -13,8 +13,8 @@ Closes #
 <!-- UI changes: before/after, light + dark, mobile (360 px) + desktop. Motion/interaction: a short video. Delete if not UI. -->
 
 | Before | After |
-|---|---|
-| | |
+| ------ | ----- |
+|        |       |
 
 ## Checklist
 

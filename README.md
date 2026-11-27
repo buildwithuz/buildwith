@@ -1,6 +1,9 @@
 <div align="center">
 
-# buildwith.uz
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="./brand/lockup-dark.svg">
+  <img alt="buildwith.uz" src="./brand/lockup.svg" width="320">
+</picture>
 
 **Home for Uzbek engineers.** Share links, post notes, write articles, and build your developer profile, all in one place.
 
@@ -15,18 +18,18 @@
 
 ## What is it?
 
-| | |
-|---|---|
-| **Links** | A Hacker News-style front page: share links, ask questions (*Savol*), show what you built (*Ko'rsat*), discuss in threads. |
-| **Notes** | Short posts like on X: follow people and tags, reply, repost, quote. A chronological *Following* timeline with no algorithm. |
-| **Articles** | Long-form writing like on Medium: a clean Markdown editor, drafts, series, beautiful reading pages. |
-| **Profiles** | `buildwith.uz/@you`: a developer home page with your README, stack, pinned repos, activity and an *open to work* badge. |
+|              |                                                                                                                                                                            |
+| ------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Notes**    | Short posts like on X — what you're building or how it's going right now. Reply, like, repost, quote, bookmark. A chronological _Following_ timeline with no algorithm.    |
+| **Posts**    | A Reddit / Hacker News-style front page: share links, ask questions (_Savol_) where the best answer rises to the top, show what you built (_Koʻrsat_), discuss in threads. |
+| **Articles** | Long-form writing like on Medium: a clean Markdown editor, drafts, series, beautiful reading pages.                                                                        |
+| **Profiles** | `buildwith.uz/@you`: a developer home page with your README, stack, pinned repos, activity and an _open to work_ badge.                                                    |
 
-Made for Uzbekistan: the UI is in Uzbek, Russian and English, everything can be shown in **Latin or Cyrillic**, you can log in with **Telegram**, and notifications arrive in Telegram.
+Made for Uzbekistan: the UI is in Uzbek, Russian and English, everything can be shown in **Latin or Cyrillic** (foreign tech words stay in Latin), you can log in with **Telegram**, and notifications arrive in Telegram.
 
 ## Stack
 
-- **apps/web**: React Router v7 (SSR) + Tailwind CSS, using components from `packages/ui`
+- **apps/web**: React Router v8 (SSR) + Tailwind CSS, using components from `packages/ui`
 - **apps/api**: Go, PostgreSQL, sqlc, OpenAPI-first REST + SSE
 - **packages/**: design system, generated API client, i18n strings, Uzbek transliteration (Go + TS, shared test vectors)
 - One server, no paid services. See [docs/architecture.md](./docs/architecture.md).
@@ -48,7 +51,7 @@ Full guide: [docs/development.md](./docs/development.md).
 Everyone is welcome. Read [CONTRIBUTING.md](./CONTRIBUTING.md) first. In short:
 
 - **Bugs** → open an issue.
-- **Ideas and features** → start in [Discussions → Ideas](https://github.com/buildwithuz/buildwith/discussions/categories/ideas) *before* writing code.
+- **Ideas and features** → start in [Discussions → Ideas](https://github.com/buildwithuz/buildwith/discussions/categories/ideas) _before_ writing code.
 - **Small, focused PRs** get reviewed fastest. Nothing merges without review.
 - New here? Look for [`good first issue`](https://github.com/buildwithuz/buildwith/labels/good%20first%20issue).
 - Not a coder? Help with **translations**, **design**, or **moderation**.

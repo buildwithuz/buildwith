@@ -1,4 +1,5 @@
 ---
+
 name: pr-ready
 description: Prepare a branch for a pull request to buildwith.uz (checks, size, Conventional Commit title, PR description, screenshots, hygiene). Use before opening or updating any PR.
 ---

@@ -18,6 +18,7 @@ jobs:
     outputs:
       web: ${{ steps.filter.outputs.web }}
       api: ${{ steps.filter.outputs.api }}
+      docker: ${{ steps.filter.outputs.docker }}
     steps:
       - uses: actions/checkout@v4
       - uses: dorny/paths-filter@v3
@@ -38,13 +39,23 @@ jobs:
               - 'pnpm-workspace.yaml'
               - 'turbo.json'
               - 'biome.json'
+              - 'tsconfig.base.json'
+              - '.nvmrc'
             api:
               - *shared
+              # Go embeds a copy of the locales; the i18n test compares it with packages/i18n.
+              - 'packages/i18n/**'
               - 'apps/api/**'
+            docker:
+              - '**/Dockerfile'
+              - '.dockerignore'
+              - 'deploy/**'
+              - '.github/workflows/ci.yml'
 
-  web:
+  # Both generators in one place: the Go stubs and the TS client come from the same openapi.yaml.
+  generated:
     needs: changes
-    if: needs.changes.outputs.web == 'true'
+    if: needs.changes.outputs.web == 'true' || needs.changes.outputs.api == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -53,14 +64,32 @@ jobs:
         with:
           node-version-file: .nvmrc
           cache: pnpm
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: apps/api/go.mod
+          cache-dependency-path: apps/api/go.sum
       - run: pnpm install --frozen-lockfile
       - name: Generated code is up to date
-        run: pnpm gen:ts && git diff --exit-code
+        run: |
+          pnpm gen:ts
+          (cd apps/api && go generate ./...)
+          git add --intent-to-add .
+          git diff --exit-code || { echo "::error::Generated code is stale. Run 'pnpm gen' and commit the result."; exit 1; }
+
+  web:
+    needs: changes
+    if: needs.changes.outputs.web == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
       - run: pnpm biome ci .
       - run: pnpm turbo run typecheck test build
-      - name: Playwright (smoke)
-        if: github.event_name == 'pull_request'
-        run: pnpm exec playwright install --with-deps chromium && pnpm e2e:smoke
 
   api:
     needs: changes
@@ -70,6 +99,7 @@ jobs:
       postgres:
         image: postgres:17
         env:
+          # Superuser: the tests create one database per Go package from this URL.
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
           POSTGRES_DB: buildwith_test
@@ -88,8 +118,6 @@ jobs:
         with:
           go-version-file: apps/api/go.mod
           cache-dependency-path: apps/api/go.sum
-      - name: Generated code is up to date
-        run: go generate ./... && git diff --exit-code
       - name: gofmt
         run: test -z "$(gofmt -l .)" || (gofmt -l . && exit 1)
       - run: go vet ./...
@@ -97,10 +125,108 @@ jobs:
       - run: go tool govulncheck ./...
       - run: go test -race -count=1 ./...
 
+  # The real stack in a browser: Postgres, the API (development mode, for Dev login),
+  # the production web build, then Playwright.
+  e2e:
+    needs: changes
+    if: needs.changes.outputs.web == 'true' || needs.changes.outputs.api == 'true'
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: buildwith
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      BUILDWITH_ENV: development
+      BUILDWITH_DATABASE_URL: postgres://postgres:postgres@localhost:5432/buildwith?sslmode=disable
+      BUILDWITH_API_ADDR: ":8080"
+      BUILDWITH_API_ORIGIN: http://localhost:8080
+      BUILDWITH_PUBLIC_ORIGIN: http://localhost:5173
+      E2E_BASE_URL: http://localhost:5173
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: apps/api/go.mod
+          cache-dependency-path: apps/api/go.sum
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Database
+        working-directory: apps/api
+        run: go run ./cmd/migrate && go run ./cmd/seed
+      - name: API
+        working-directory: apps/api
+        run: |
+          mkdir -p "$RUNNER_TEMP/media"
+          go build -o "$RUNNER_TEMP/server" ./cmd/server
+          BUILDWITH_MEDIA_DIR="$RUNNER_TEMP/media" nohup "$RUNNER_TEMP/server" > "$RUNNER_TEMP/api.log" 2>&1 &
+      - name: Web
+        run: |
+          pnpm --filter @buildwith/web build
+          cd apps/web && PORT=5173 NODE_ENV=production nohup pnpm start > "$RUNNER_TEMP/web.log" 2>&1 &
+      - name: Wait for the stack
+        run: |
+          for _ in $(seq 60); do
+            curl -fsS http://localhost:5173/healthz > /dev/null && exit 0
+            sleep 1
+          done
+          cat "$RUNNER_TEMP/api.log" "$RUNNER_TEMP/web.log"
+          exit 1
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm e2e
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-results
+          path: |
+            test-results/
+            ${{ runner.temp }}/api.log
+            ${{ runner.temp }}/web.log
+          retention-days: 7
+
+  # Production images still build. Nothing is pushed: the server builds its own on deploy.
+  docker:
+    needs: changes
+    if: github.event_name == 'pull_request' && needs.changes.outputs.docker == 'true'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        image: [api, web]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/${{ matrix.image }}/Dockerfile
+          push: false
+          build-args: VERSION=ci-${{ github.sha }}
+          cache-from: type=gha,scope=${{ matrix.image }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.image }}
+      - name: Compose file and Caddyfile are valid
+        if: matrix.image == 'api'
+        run: |
+          printf 'POSTGRES_PASSWORD=ci\n' > "$RUNNER_TEMP/env"
+          BUILDWITH_ENV_FILE="$RUNNER_TEMP/env" docker compose --env-file "$RUNNER_TEMP/env" -f deploy/compose.prod.yml config --quiet
+          docker run --rm -e BUILDWITH_DOMAIN=buildwith.uz -e BUILDWITH_ACME_EMAIL=ci@buildwith.uz \
+            -v "$PWD/deploy:/etc/caddy:ro" caddy:2 caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
+          for f in deploy/*.sh; do bash -n "$f"; done
+
   # Single required check for branch protection; passes when every job that ran succeeded.
   ci-ok:
     if: always()
-    needs: [changes, web, api]
+    needs: [changes, generated, web, api, e2e, docker]
     runs-on: ubuntu-latest
     steps:
       - name: All jobs passed or were skipped

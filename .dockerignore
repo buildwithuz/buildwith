@@ -1,0 +1,35 @@
+# Build context is the repo root for both images; keep it small and secret-free.
+.git
+.github
+.devcontainer
+.claude
+.local
+**/node_modules
+**/.pnpm-store
+**/.turbo
+**/.react-router
+**/build
+**/dist
+**/coverage
+**/storybook-static
+playwright-report
+test-results
+apps/api/bin
+tmp
+media
+deploy
+docs
+brand
+
+# Env & secrets
+.env
+.env.*
+!.env.example
+**/*.pem
+**/*.key
+
+# Noise
+**/*.log
+**/*.dump
+**/.DS_Store
+**/*.swp
