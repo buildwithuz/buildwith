@@ -18,11 +18,26 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        language: [go, javascript-typescript]
+        include:
+          # Go has no "none" build mode; the module lives in apps/api, so build it by hand.
+          - language: go
+            build-mode: manual
+          - language: javascript-typescript
+            build-mode: none
     steps:
       - uses: actions/checkout@v4
+      - if: matrix.language == 'go'
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: apps/api/go.mod
+          cache-dependency-path: apps/api/go.sum
       - uses: github/codeql-action/init@v3
         with:
           languages: ${{ matrix.language }}
-          build-mode: none
+          build-mode: ${{ matrix.build-mode }}
+      - if: matrix.language == 'go'
+        working-directory: apps/api
+        run: go build ./...
       - uses: github/codeql-action/analyze@v3
+        with:
+          category: /language:${{ matrix.language }}

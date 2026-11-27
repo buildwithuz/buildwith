@@ -31,7 +31,8 @@ jobs:
             infra
             deps
           requireScope: false
-          subjectPattern: ^[a-z].+$
+          # Dependabot always capitalises "Bump"; everything else starts with a lowercase verb.
+          subjectPattern: ^([a-z]|Bump ).+$
           subjectPatternError: "Start the summary with a lowercase verb, e.g. 'feat(notes): add quote posts'."
 
   labels:
