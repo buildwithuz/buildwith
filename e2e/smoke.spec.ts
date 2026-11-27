@@ -27,8 +27,14 @@ test('asking a question and answering it', async ({ page, browser }) => {
   await signIn(page, 'nodira')
   await page.goto('/submit?kind=ask')
   const title = unique('E2E savol: qaysi editor yaxshi?')
-  await page.getByLabel(/savol|sarlavha/i).first().fill(title)
-  await page.getByRole('button', { name: /joylash|savol berish|yuborish/i }).last().click()
+  await page
+    .getByLabel(/savol|sarlavha/i)
+    .first()
+    .fill(title)
+  await page
+    .getByRole('button', { name: /joylash|savol berish|yuborish/i })
+    .last()
+    .click()
   await expect(page.getByRole('heading', { name: title })).toBeVisible()
   const questionUrl = page.url()
 
@@ -39,7 +45,10 @@ test('asking a question and answering it', async ({ page, browser }) => {
   await other.goto(questionUrl)
   const answer = unique('Neovim, albatta')
   await other.locator('#comment-form textarea').fill(answer)
-  await other.locator('#comment-form').getByRole('button', { name: /joylash/i }).click()
+  await other
+    .locator('#comment-form')
+    .getByRole('button', { name: /joylash/i })
+    .click()
   await expect(other.getByText(answer)).toBeVisible()
   await ctx.close()
 
@@ -54,7 +63,10 @@ test('voting works without JavaScript', async ({ browser }) => {
   await page.locator('input[name="username"]').fill('jasur')
   await page.locator('input[name="username"]').press('Enter')
   await page.goto('/new')
-  const row = page.locator('article').filter({ hasNot: page.locator('[aria-pressed="true"]') }).first()
+  const row = page
+    .locator('article')
+    .filter({ hasNot: page.locator('[aria-pressed="true"]') })
+    .first()
   const before = Number(await row.locator('form[action="/actions/vote"] span').first().textContent())
   await row.locator('form[action="/actions/vote"] button[value="1"]').click()
   await page.goto('/new')
@@ -66,7 +78,7 @@ test('voting works without JavaScript', async ({ browser }) => {
 test('Cyrillic preference transliterates content but not code or usernames', async ({ page, baseURL }) => {
   await page.context().addCookies([{ name: 'bw_script', value: 'cyrl', url: baseURL! }])
   await page.goto('/notes')
-  const body = await page.locator('main').innerText()
+  const body = (await page.locator('main').textContent()) ?? ''
   expect(body).toMatch(/[а-яўқғҳ]/i)
   expect(body).toContain('@aziz')
 })

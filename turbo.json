@@ -7,9 +7,19 @@
       "dependsOn": ["^build"],
       "outputs": ["dist/**", "build/**", ".react-router/**", "storybook-static/**"]
     },
-    "typecheck": { "dependsOn": ["^build"] },
-    "test": { "dependsOn": ["^build"] },
-    "generate": { "outputs": ["src/generated/**"] },
-    "dev": { "cache": false, "persistent": true }
-  }
+    "typecheck": {
+      "dependsOn": ["^build"]
+    },
+    "test": {
+      "dependsOn": ["^build"]
+    },
+    "generate": {
+      "outputs": ["src/generated/**"]
+    },
+    "dev": {
+      "cache": false,
+      "persistent": true
+    }
+  },
+  "globalPassThroughEnv": ["CI", "E2E_BASE_URL", "E2E_CHROME"]
 }
