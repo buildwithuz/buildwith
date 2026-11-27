@@ -14,14 +14,23 @@ export interface NavTab {
  */
 export function NavTabs({ tabs, label, className }: { tabs: NavTab[]; label: string; className?: string }) {
   return (
-    <nav aria-label={label} className={cx('flex gap-1 overflow-x-auto border-b border-line', className)}>
+    // Scrolls sideways when the tabs don't fit (phones) but never shows a scrollbar. The underline is an
+    // inset shadow, not a border the tabs overlap with -mb-px: that 1px overflowed and, since
+    // overflow-x:auto makes overflow-y auto too, gave every tab row a vertical scrollbar.
+    <nav
+      aria-label={label}
+      className={cx(
+        'flex gap-1 overflow-x-auto overflow-y-hidden shadow-[inset_0_-1px_0_var(--line)] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden',
+        className,
+      )}
+    >
       {tabs.map((t) => (
         <a
           key={t.href}
           href={t.href}
           aria-current={t.active ? 'page' : undefined}
           className={cx(
-            '-mb-px whitespace-nowrap border-b-2 px-3 py-2 text-sm transition-colors duration-150',
+            'whitespace-nowrap border-b-2 px-3 py-2 text-sm transition-colors duration-150',
             t.active ? 'border-lapis font-semibold text-ink' : 'border-transparent text-muted hover:text-ink',
           )}
         >
