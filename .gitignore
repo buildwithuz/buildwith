@@ -22,8 +22,13 @@ tmp/
 .env.*
 !.env.example
 
-# Runtime data
-media/
+# Runtime data (deploy/ keeps server state next to the checkout in /srv/buildwith)
+# Uploaded files in development (BUILDWITH_MEDIA_DIR); production keeps them outside the checkout.
+/media/
+/apps/api/media/
+/data/
+/backups/
+/.deploy/
 *.log
 *.dump
 
