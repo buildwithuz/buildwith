@@ -118,6 +118,24 @@ func (e BadgeKind) Valid() bool {
 	}
 }
 
+// Defines values for CommentSort.
+const (
+	CommentSortBest CommentSort = "best"
+	CommentSortNew  CommentSort = "new"
+)
+
+// Valid indicates whether the value is a known member of the CommentSort enum.
+func (e CommentSort) Valid() bool {
+	switch e {
+	case CommentSortBest:
+		return true
+	case CommentSortNew:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for CommentSubject.
 const (
 	CommentSubjectArticle CommentSubject = "article"
@@ -321,19 +339,19 @@ func (e LinkKind) Valid() bool {
 
 // Defines values for LinkSort.
 const (
-	Best LinkSort = "best"
-	New  LinkSort = "new"
-	Top  LinkSort = "top"
+	LinkSortBest LinkSort = "best"
+	LinkSortNew  LinkSort = "new"
+	LinkSortTop  LinkSort = "top"
 )
 
 // Valid indicates whether the value is a known member of the LinkSort enum.
 func (e LinkSort) Valid() bool {
 	switch e {
-	case Best:
+	case LinkSortBest:
 		return true
-	case New:
+	case LinkSortNew:
 		return true
-	case Top:
+	case LinkSortTop:
 		return true
 	default:
 		return false
@@ -800,6 +818,9 @@ type Comment struct {
 	Points     int        `json:"points"`
 	ViewerVote VoteValue  `json:"viewer_vote"`
 }
+
+// CommentSort defines model for CommentSort.
+type CommentSort string
 
 // CommentSubject defines model for CommentSubject.
 type CommentSubject string
@@ -1348,6 +1369,7 @@ type StartOAuthParams struct {
 type ListCommentsParams struct {
 	SubjectType CommentSubject `form:"subject_type" json:"subject_type"`
 	SubjectId   int64          `form:"subject_id" json:"subject_id"`
+	Sort        *CommentSort   `form:"sort,omitempty" json:"sort,omitempty"`
 	Limit       *Limit         `form:"limit,omitempty" json:"limit,omitempty"`
 }
 
@@ -2610,6 +2632,19 @@ func (siw *ServerInterfaceWrapper) ListComments(w http.ResponseWriter, r *http.R
 			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "subject_id"})
 		} else {
 			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "subject_id", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "sort" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "sort", r.URL.Query(), &params.Sort, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "sort"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "sort", Err: err})
 		}
 		return
 	}

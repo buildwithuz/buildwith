@@ -1,35 +1,36 @@
 -- Full-text search over everything, on the `simple` config so Uzbek, Russian and
--- English all behave the same. Queries arrive already normalized by translit.ForSearch.
+-- English all behave the same. The query comes in both scripts (q and q_cyrl) so
+-- it matches posts written in either.
 -- name: SearchAll :many
 select kind, id, created_at, rank from (
   select 'link'::text as kind, l.id, l.created_at,
-         ts_rank(l.search, websearch_to_tsquery('simple', sqlc.arg(q)::text)) as rank
+         ts_rank(bw_tsv(l.title || ' ' || l.domain || ' ' || l.body_md), bw_tsq(sqlc.arg(q)::text, sqlc.arg(q_cyrl)::text)) as rank
   from links l
-  where l.search @@ websearch_to_tsquery('simple', sqlc.arg(q)::text)
+  where bw_tsv(l.title || ' ' || l.domain || ' ' || l.body_md) @@ bw_tsq(sqlc.arg(q)::text, sqlc.arg(q_cyrl)::text)
     and l.deleted_at is null and l.killed_at is null
     and not bw_hidden(sqlc.narg(viewer_id)::bigint, l.author_id)
 
   union all
   select 'article', a.id, a.published_at,
-         ts_rank(a.search, websearch_to_tsquery('simple', sqlc.arg(q)::text))
+         ts_rank(bw_tsv(a.title || ' ' || a.subtitle || ' ' || a.body_md), bw_tsq(sqlc.arg(q)::text, sqlc.arg(q_cyrl)::text))
   from articles a
-  where a.search @@ websearch_to_tsquery('simple', sqlc.arg(q)::text)
+  where bw_tsv(a.title || ' ' || a.subtitle || ' ' || a.body_md) @@ bw_tsq(sqlc.arg(q)::text, sqlc.arg(q_cyrl)::text)
     and a.status = 'published' and a.deleted_at is null and a.killed_at is null
     and not bw_hidden(sqlc.narg(viewer_id)::bigint, a.author_id)
 
   union all
   select 'note', n.id, n.created_at,
-         ts_rank(n.search, websearch_to_tsquery('simple', sqlc.arg(q)::text))
+         ts_rank(bw_tsv(n.body_md), bw_tsq(sqlc.arg(q)::text, sqlc.arg(q_cyrl)::text))
   from notes n
-  where n.search @@ websearch_to_tsquery('simple', sqlc.arg(q)::text)
+  where bw_tsv(n.body_md) @@ bw_tsq(sqlc.arg(q)::text, sqlc.arg(q_cyrl)::text)
     and n.deleted_at is null and n.killed_at is null
     and not bw_hidden(sqlc.narg(viewer_id)::bigint, n.author_id)
 
   union all
   select 'comment', c.id, c.created_at,
-         ts_rank(c.search, websearch_to_tsquery('simple', sqlc.arg(q)::text))
+         ts_rank(bw_tsv(c.body_md), bw_tsq(sqlc.arg(q)::text, sqlc.arg(q_cyrl)::text))
   from comments c
-  where c.search @@ websearch_to_tsquery('simple', sqlc.arg(q)::text)
+  where bw_tsv(c.body_md) @@ bw_tsq(sqlc.arg(q)::text, sqlc.arg(q_cyrl)::text)
     and c.deleted_at is null and c.killed_at is null
     and not bw_hidden(sqlc.narg(viewer_id)::bigint, c.author_id)
 ) hits

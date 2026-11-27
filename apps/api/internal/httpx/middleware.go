@@ -1,6 +1,7 @@
 package httpx
 
 import (
+	"context"
 	"crypto/subtle"
 	"log/slog"
 	"net/http"
@@ -77,6 +78,7 @@ type SessionLoader func(r *http.Request, token string) (*Session, error)
 func Sessions(load SessionLoader) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w = &ctxWriter{ResponseWriter: w, ctx: r.Context()}
 			ctx := withRequest(withWriter(r.Context(), w), r)
 			if c, err := r.Cookie(SessionCookie); err == nil && c.Value != "" {
 				s, err := load(r, c.Value)
@@ -133,4 +135,33 @@ func Chain(h http.Handler, mw ...func(http.Handler) http.Handler) http.Handler {
 		h = mw[i](h)
 	}
 	return h
+}
+
+// ctxWriter lets code that only receives the ResponseWriter (generated response
+// visitors, such as the event stream) see when the client goes away.
+type ctxWriter struct {
+	http.ResponseWriter
+	ctx context.Context
+}
+
+func (c *ctxWriter) Context() context.Context    { return c.ctx }
+func (c *ctxWriter) Unwrap() http.ResponseWriter { return c.ResponseWriter }
+func (c *ctxWriter) Flush() {
+	if f, ok := c.ResponseWriter.(http.Flusher); ok {
+		f.Flush()
+	}
+}
+
+// ContextOf returns the request context carried by w, or Background.
+func ContextOf(w http.ResponseWriter) context.Context {
+	for {
+		if c, ok := w.(interface{ Context() context.Context }); ok {
+			return c.Context()
+		}
+		u, ok := w.(interface{ Unwrap() http.ResponseWriter })
+		if !ok {
+			return context.Background()
+		}
+		w = u.Unwrap()
+	}
 }

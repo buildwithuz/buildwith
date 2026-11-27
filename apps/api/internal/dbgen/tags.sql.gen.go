@@ -168,17 +168,18 @@ func (q *Queries) ListTagsForLinks(ctx context.Context, ids []int64) ([]ListTags
 }
 
 const searchTags = `-- name: SearchTags :many
-select id, slug, name, description, post_count, created_at from tags where slug like $1 || '%' or lower(name) like '%' || $1 || '%'
-order by post_count desc limit $2
+select id, slug, name, description, post_count, created_at from tags
+where slug like $1::text || '%' or lower(name) like '%' || $1::text || '%'
+order by post_count desc limit $2::int
 `
 
 type SearchTagsParams struct {
-	Column1 *string
-	Limit   int32
+	Q         string
+	PageLimit int32
 }
 
 func (q *Queries) SearchTags(ctx context.Context, arg SearchTagsParams) ([]Tag, error) {
-	rows, err := q.db.Query(ctx, searchTags, arg.Column1, arg.Limit)
+	rows, err := q.db.Query(ctx, searchTags, arg.Q, arg.PageLimit)
 	if err != nil {
 		return nil, err
 	}

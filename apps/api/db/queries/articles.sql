@@ -40,10 +40,12 @@ returning *;
 update articles set deleted_at = now() where id = $1 and deleted_at is null;
 
 -- name: KillArticle :exec
-update articles set killed_at = case when $2::boolean then now() else null end where id = $1;
+update articles set killed_at = case when sqlc.arg(enabled)::boolean then now() else null end
+where id = sqlc.arg(id)::bigint;
 
 -- name: FeatureArticle :exec
-update articles set featured_at = case when $2::boolean then now() else null end where id = $1;
+update articles set featured_at = case when sqlc.arg(enabled)::boolean then now() else null end
+where id = sqlc.arg(id)::bigint;
 
 -- name: SetArticleScore :exec
 update articles set score = $2 where id = $1;
@@ -123,7 +125,9 @@ limit sqlc.arg(page_limit)::int;
 -- name: ListArticlesByIDs :many
 select sqlc.embed(a), sqlc.embed(u)
 from articles a join users u on u.id = a.author_id
-where a.id = any(sqlc.arg(ids)::bigint[]) and a.deleted_at is null;
+where a.id = any(sqlc.arg(ids)::bigint[]) and a.deleted_at is null
+  and a.status = 'published'
+  and not bw_hidden(sqlc.narg(viewer_id)::bigint, a.author_id);
 
 -- name: ListDueScheduledArticles :many
 select id, author_id from articles

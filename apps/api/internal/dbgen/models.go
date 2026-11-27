@@ -35,7 +35,6 @@ type Article struct {
 	UpdatedAt      time.Time
 	DeletedAt      *time.Time
 	KilledAt       *time.Time
-	Search         string
 }
 
 type ArticleTag struct {
@@ -74,7 +73,6 @@ type Comment struct {
 	EditedAt    *time.Time
 	DeletedAt   *time.Time
 	KilledAt    *time.Time
-	Search      string
 }
 
 type DomainRule struct {
@@ -131,7 +129,6 @@ type Link struct {
 	EditedAt     *time.Time
 	DeletedAt    *time.Time
 	KilledAt     *time.Time
-	Search       string
 }
 
 type LinkTag struct {
@@ -210,7 +207,6 @@ type Note struct {
 	EditedAt       *time.Time
 	DeletedAt      *time.Time
 	KilledAt       *time.Time
-	Search         string
 }
 
 type NoteBookmark struct {

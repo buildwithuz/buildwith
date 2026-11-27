@@ -223,7 +223,47 @@ $$;
 
 create trigger users_touch before update on users for each row execute function bw_touch_updated_at();
 
+-- ---------------------------------------------------------------------------
+-- Search. Text is folded (lowercase, no apostrophes) so "oʻzbek", "o'zbek" and
+-- "ozbek" are one word. Queries use the same bw_tsv() expressions as these
+-- indexes, which is what lets Postgres use them.
+-- ---------------------------------------------------------------------------
+
+-- +goose StatementBegin
+create function bw_fold(t text) returns text
+language sql immutable parallel safe as $$
+  select translate(lower(t), U&'\02BB\02BC\2018\2019''`', '');
+$$;
+-- +goose StatementEnd
+
+-- +goose StatementBegin
+create function bw_tsv(t text) returns tsvector
+language sql immutable parallel safe as $$
+  select to_tsvector('simple'::regconfig, public.bw_fold(t));
+$$;
+-- +goose StatementEnd
+
+-- +goose StatementBegin
+create function bw_tsq(latin text, cyrillic text) returns tsquery
+language sql immutable parallel safe as $$
+  select websearch_to_tsquery('simple'::regconfig, public.bw_fold(latin))
+      || websearch_to_tsquery('simple'::regconfig, public.bw_fold(cyrillic));
+$$;
+-- +goose StatementEnd
+
+create index links_search_idx on links using gin (bw_tsv(title || ' ' || domain || ' ' || body_md));
+create index notes_search_idx on notes using gin (bw_tsv(body_md));
+create index articles_search_idx on articles using gin (bw_tsv(title || ' ' || subtitle || ' ' || body_md));
+create index comments_search_idx on comments using gin (bw_tsv(body_md));
+
 -- +goose Down
+drop index comments_search_idx;
+drop index articles_search_idx;
+drop index notes_search_idx;
+drop index links_search_idx;
+drop function bw_tsq;
+drop function bw_tsv;
+drop function bw_fold;
 drop trigger users_touch on users;
 drop trigger article_tags_count on article_tags;
 drop trigger link_tags_count on link_tags;

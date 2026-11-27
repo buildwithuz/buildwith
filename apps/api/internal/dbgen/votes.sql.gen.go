@@ -104,6 +104,40 @@ func (q *Queries) GetVote(ctx context.Context, arg GetVoteParams) (int16, error)
 	return value, err
 }
 
+const getVoteTarget = `-- name: GetVoteTarget :one
+select
+  coalesce(case $1::text
+    when 'link'    then (select author_id from links    where id = $2::bigint and deleted_at is null)
+    when 'article' then (select author_id from articles where id = $2::bigint and deleted_at is null
+                                                          and status = 'published')
+    when 'comment' then (select author_id from comments where id = $2::bigint and deleted_at is null)
+    when 'note'    then (select author_id from notes    where id = $2::bigint and deleted_at is null)
+  end, 0)::bigint as author_id,
+  coalesce(case $1::text
+    when 'link'    then (select points from links    where id = $2::bigint)
+    when 'article' then (select points from articles where id = $2::bigint)
+    when 'comment' then (select points from comments where id = $2::bigint)
+  end, 0)::int as points
+`
+
+type GetVoteTargetParams struct {
+	SubjectType string
+	SubjectID   int64
+}
+
+type GetVoteTargetRow struct {
+	AuthorID int64
+	Points   int32
+}
+
+// Everything a vote or flag needs to know about its target, in one round trip.
+func (q *Queries) GetVoteTarget(ctx context.Context, arg GetVoteTargetParams) (GetVoteTargetRow, error) {
+	row := q.db.QueryRow(ctx, getVoteTarget, arg.SubjectType, arg.SubjectID)
+	var i GetVoteTargetRow
+	err := row.Scan(&i.AuthorID, &i.Points)
+	return i, err
+}
+
 const listVotesForSubjects = `-- name: ListVotesForSubjects :many
 select subject_id, value from votes
 where subject_type = $1::text and subject_id = any($2::bigint[])

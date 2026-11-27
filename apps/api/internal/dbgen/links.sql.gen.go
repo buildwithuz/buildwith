@@ -70,7 +70,7 @@ func (q *Queries) CountAuthorLinksSince(ctx context.Context, arg CountAuthorLink
 const createLink = `-- name: CreateLink :one
 insert into links (author_id, kind, title, slug, url, url_canonical, url_hash, domain, body_md, body_html)
 values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-returning id, author_id, kind, title, slug, url, url_canonical, url_hash, domain, body_md, body_html, points, comment_count, flag_count, score, created_at, updated_at, edited_at, deleted_at, killed_at, search
+returning id, author_id, kind, title, slug, url, url_canonical, url_hash, domain, body_md, body_html, points, comment_count, flag_count, score, created_at, updated_at, edited_at, deleted_at, killed_at
 `
 
 type CreateLinkParams struct {
@@ -121,7 +121,6 @@ func (q *Queries) CreateLink(ctx context.Context, arg CreateLinkParams) (Link, e
 		&i.EditedAt,
 		&i.DeletedAt,
 		&i.KilledAt,
-		&i.Search,
 	)
 	return i, err
 }
@@ -170,7 +169,7 @@ func (q *Queries) GetDomainRule(ctx context.Context, domain string) (DomainRule,
 }
 
 const getLink = `-- name: GetLink :one
-select l.id, l.author_id, l.kind, l.title, l.slug, l.url, l.url_canonical, l.url_hash, l.domain, l.body_md, l.body_html, l.points, l.comment_count, l.flag_count, l.score, l.created_at, l.updated_at, l.edited_at, l.deleted_at, l.killed_at, l.search, u.id, u.username, u.username_lower, u.display_name, u.pronouns, u.bio, u.readme_md, u.readme_html, u.role_title, u.company, u.location, u.open_to_work, u.accent, u.avatar_media, u.banner_media, u.lang, u.script, u.theme, u.karma, u.is_moderator, u.is_admin, u.email, u.email_domain, u.created_at, u.updated_at, u.banned_at, u.ban_reason, u.deleted_at
+select l.id, l.author_id, l.kind, l.title, l.slug, l.url, l.url_canonical, l.url_hash, l.domain, l.body_md, l.body_html, l.points, l.comment_count, l.flag_count, l.score, l.created_at, l.updated_at, l.edited_at, l.deleted_at, l.killed_at, u.id, u.username, u.username_lower, u.display_name, u.pronouns, u.bio, u.readme_md, u.readme_html, u.role_title, u.company, u.location, u.open_to_work, u.accent, u.avatar_media, u.banner_media, u.lang, u.script, u.theme, u.karma, u.is_moderator, u.is_admin, u.email, u.email_domain, u.created_at, u.updated_at, u.banned_at, u.ban_reason, u.deleted_at
 from links l join users u on u.id = l.author_id
 where l.id = $1 and l.deleted_at is null
 `
@@ -204,7 +203,6 @@ func (q *Queries) GetLink(ctx context.Context, id int64) (GetLinkRow, error) {
 		&i.Link.EditedAt,
 		&i.Link.DeletedAt,
 		&i.Link.KilledAt,
-		&i.Link.Search,
 		&i.User.ID,
 		&i.User.Username,
 		&i.User.UsernameLower,
@@ -238,16 +236,17 @@ func (q *Queries) GetLink(ctx context.Context, id int64) (GetLinkRow, error) {
 }
 
 const killLink = `-- name: KillLink :exec
-update links set killed_at = case when $2::boolean then now() else null end where id = $1
+update links set killed_at = case when $1::boolean then now() else null end
+where id = $2::bigint
 `
 
 type KillLinkParams struct {
+	Enabled bool
 	ID      int64
-	Column2 bool
 }
 
 func (q *Queries) KillLink(ctx context.Context, arg KillLinkParams) error {
-	_, err := q.db.Exec(ctx, killLink, arg.ID, arg.Column2)
+	_, err := q.db.Exec(ctx, killLink, arg.Enabled, arg.ID)
 	return err
 }
 
@@ -282,7 +281,7 @@ func (q *Queries) ListDomainRules(ctx context.Context) ([]DomainRule, error) {
 }
 
 const listLinksByCreated = `-- name: ListLinksByCreated :many
-select l.id, l.author_id, l.kind, l.title, l.slug, l.url, l.url_canonical, l.url_hash, l.domain, l.body_md, l.body_html, l.points, l.comment_count, l.flag_count, l.score, l.created_at, l.updated_at, l.edited_at, l.deleted_at, l.killed_at, l.search, u.id, u.username, u.username_lower, u.display_name, u.pronouns, u.bio, u.readme_md, u.readme_html, u.role_title, u.company, u.location, u.open_to_work, u.accent, u.avatar_media, u.banner_media, u.lang, u.script, u.theme, u.karma, u.is_moderator, u.is_admin, u.email, u.email_domain, u.created_at, u.updated_at, u.banned_at, u.ban_reason, u.deleted_at
+select l.id, l.author_id, l.kind, l.title, l.slug, l.url, l.url_canonical, l.url_hash, l.domain, l.body_md, l.body_html, l.points, l.comment_count, l.flag_count, l.score, l.created_at, l.updated_at, l.edited_at, l.deleted_at, l.killed_at, u.id, u.username, u.username_lower, u.display_name, u.pronouns, u.bio, u.readme_md, u.readme_html, u.role_title, u.company, u.location, u.open_to_work, u.accent, u.avatar_media, u.banner_media, u.lang, u.script, u.theme, u.karma, u.is_moderator, u.is_admin, u.email, u.email_domain, u.created_at, u.updated_at, u.banned_at, u.ban_reason, u.deleted_at
 from links l
 join users u on u.id = l.author_id
 where l.deleted_at is null and l.killed_at is null
@@ -358,7 +357,6 @@ func (q *Queries) ListLinksByCreated(ctx context.Context, arg ListLinksByCreated
 			&i.Link.EditedAt,
 			&i.Link.DeletedAt,
 			&i.Link.KilledAt,
-			&i.Link.Search,
 			&i.User.ID,
 			&i.User.Username,
 			&i.User.UsernameLower,
@@ -399,18 +397,24 @@ func (q *Queries) ListLinksByCreated(ctx context.Context, arg ListLinksByCreated
 }
 
 const listLinksByIDs = `-- name: ListLinksByIDs :many
-select l.id, l.author_id, l.kind, l.title, l.slug, l.url, l.url_canonical, l.url_hash, l.domain, l.body_md, l.body_html, l.points, l.comment_count, l.flag_count, l.score, l.created_at, l.updated_at, l.edited_at, l.deleted_at, l.killed_at, l.search, u.id, u.username, u.username_lower, u.display_name, u.pronouns, u.bio, u.readme_md, u.readme_html, u.role_title, u.company, u.location, u.open_to_work, u.accent, u.avatar_media, u.banner_media, u.lang, u.script, u.theme, u.karma, u.is_moderator, u.is_admin, u.email, u.email_domain, u.created_at, u.updated_at, u.banned_at, u.ban_reason, u.deleted_at
+select l.id, l.author_id, l.kind, l.title, l.slug, l.url, l.url_canonical, l.url_hash, l.domain, l.body_md, l.body_html, l.points, l.comment_count, l.flag_count, l.score, l.created_at, l.updated_at, l.edited_at, l.deleted_at, l.killed_at, u.id, u.username, u.username_lower, u.display_name, u.pronouns, u.bio, u.readme_md, u.readme_html, u.role_title, u.company, u.location, u.open_to_work, u.accent, u.avatar_media, u.banner_media, u.lang, u.script, u.theme, u.karma, u.is_moderator, u.is_admin, u.email, u.email_domain, u.created_at, u.updated_at, u.banned_at, u.ban_reason, u.deleted_at
 from links l join users u on u.id = l.author_id
 where l.id = any($1::bigint[]) and l.deleted_at is null
+  and not bw_hidden($2::bigint, l.author_id)
 `
+
+type ListLinksByIDsParams struct {
+	Ids      []int64
+	ViewerID *int64
+}
 
 type ListLinksByIDsRow struct {
 	Link Link
 	User User
 }
 
-func (q *Queries) ListLinksByIDs(ctx context.Context, ids []int64) ([]ListLinksByIDsRow, error) {
-	rows, err := q.db.Query(ctx, listLinksByIDs, ids)
+func (q *Queries) ListLinksByIDs(ctx context.Context, arg ListLinksByIDsParams) ([]ListLinksByIDsRow, error) {
+	rows, err := q.db.Query(ctx, listLinksByIDs, arg.Ids, arg.ViewerID)
 	if err != nil {
 		return nil, err
 	}
@@ -439,7 +443,6 @@ func (q *Queries) ListLinksByIDs(ctx context.Context, ids []int64) ([]ListLinksB
 			&i.Link.EditedAt,
 			&i.Link.DeletedAt,
 			&i.Link.KilledAt,
-			&i.Link.Search,
 			&i.User.ID,
 			&i.User.Username,
 			&i.User.UsernameLower,
@@ -480,7 +483,7 @@ func (q *Queries) ListLinksByIDs(ctx context.Context, ids []int64) ([]ListLinksB
 }
 
 const listLinksByPoints = `-- name: ListLinksByPoints :many
-select l.id, l.author_id, l.kind, l.title, l.slug, l.url, l.url_canonical, l.url_hash, l.domain, l.body_md, l.body_html, l.points, l.comment_count, l.flag_count, l.score, l.created_at, l.updated_at, l.edited_at, l.deleted_at, l.killed_at, l.search, u.id, u.username, u.username_lower, u.display_name, u.pronouns, u.bio, u.readme_md, u.readme_html, u.role_title, u.company, u.location, u.open_to_work, u.accent, u.avatar_media, u.banner_media, u.lang, u.script, u.theme, u.karma, u.is_moderator, u.is_admin, u.email, u.email_domain, u.created_at, u.updated_at, u.banned_at, u.ban_reason, u.deleted_at
+select l.id, l.author_id, l.kind, l.title, l.slug, l.url, l.url_canonical, l.url_hash, l.domain, l.body_md, l.body_html, l.points, l.comment_count, l.flag_count, l.score, l.created_at, l.updated_at, l.edited_at, l.deleted_at, l.killed_at, u.id, u.username, u.username_lower, u.display_name, u.pronouns, u.bio, u.readme_md, u.readme_html, u.role_title, u.company, u.location, u.open_to_work, u.accent, u.avatar_media, u.banner_media, u.lang, u.script, u.theme, u.karma, u.is_moderator, u.is_admin, u.email, u.email_domain, u.created_at, u.updated_at, u.banned_at, u.ban_reason, u.deleted_at
 from links l
 join users u on u.id = l.author_id
 where l.deleted_at is null and l.killed_at is null
@@ -556,7 +559,6 @@ func (q *Queries) ListLinksByPoints(ctx context.Context, arg ListLinksByPointsPa
 			&i.Link.EditedAt,
 			&i.Link.DeletedAt,
 			&i.Link.KilledAt,
-			&i.Link.Search,
 			&i.User.ID,
 			&i.User.Username,
 			&i.User.UsernameLower,
@@ -597,7 +599,7 @@ func (q *Queries) ListLinksByPoints(ctx context.Context, arg ListLinksByPointsPa
 }
 
 const listLinksByScore = `-- name: ListLinksByScore :many
-select l.id, l.author_id, l.kind, l.title, l.slug, l.url, l.url_canonical, l.url_hash, l.domain, l.body_md, l.body_html, l.points, l.comment_count, l.flag_count, l.score, l.created_at, l.updated_at, l.edited_at, l.deleted_at, l.killed_at, l.search, u.id, u.username, u.username_lower, u.display_name, u.pronouns, u.bio, u.readme_md, u.readme_html, u.role_title, u.company, u.location, u.open_to_work, u.accent, u.avatar_media, u.banner_media, u.lang, u.script, u.theme, u.karma, u.is_moderator, u.is_admin, u.email, u.email_domain, u.created_at, u.updated_at, u.banned_at, u.ban_reason, u.deleted_at
+select l.id, l.author_id, l.kind, l.title, l.slug, l.url, l.url_canonical, l.url_hash, l.domain, l.body_md, l.body_html, l.points, l.comment_count, l.flag_count, l.score, l.created_at, l.updated_at, l.edited_at, l.deleted_at, l.killed_at, u.id, u.username, u.username_lower, u.display_name, u.pronouns, u.bio, u.readme_md, u.readme_html, u.role_title, u.company, u.location, u.open_to_work, u.accent, u.avatar_media, u.banner_media, u.lang, u.script, u.theme, u.karma, u.is_moderator, u.is_admin, u.email, u.email_domain, u.created_at, u.updated_at, u.banned_at, u.ban_reason, u.deleted_at
 from links l
 join users u on u.id = l.author_id
 where l.deleted_at is null and l.killed_at is null
@@ -673,7 +675,6 @@ func (q *Queries) ListLinksByScore(ctx context.Context, arg ListLinksByScorePara
 			&i.Link.EditedAt,
 			&i.Link.DeletedAt,
 			&i.Link.KilledAt,
-			&i.Link.Search,
 			&i.User.ID,
 			&i.User.Username,
 			&i.User.UsernameLower,
@@ -800,7 +801,7 @@ func (q *Queries) SoftDeleteLink(ctx context.Context, id int64) (int64, error) {
 const updateLinkBody = `-- name: UpdateLinkBody :one
 update links set body_md = $2, body_html = $3, edited_at = now(), updated_at = now()
 where id = $1 and deleted_at is null
-returning id, author_id, kind, title, slug, url, url_canonical, url_hash, domain, body_md, body_html, points, comment_count, flag_count, score, created_at, updated_at, edited_at, deleted_at, killed_at, search
+returning id, author_id, kind, title, slug, url, url_canonical, url_hash, domain, body_md, body_html, points, comment_count, flag_count, score, created_at, updated_at, edited_at, deleted_at, killed_at
 `
 
 type UpdateLinkBodyParams struct {
@@ -833,7 +834,6 @@ func (q *Queries) UpdateLinkBody(ctx context.Context, arg UpdateLinkBodyParams) 
 		&i.EditedAt,
 		&i.DeletedAt,
 		&i.KilledAt,
-		&i.Search,
 	)
 	return i, err
 }

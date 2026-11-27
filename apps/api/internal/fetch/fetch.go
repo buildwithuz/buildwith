@@ -238,3 +238,21 @@ func clean(s string, n int) string {
 	}
 	return s
 }
+
+// Do sends a prepared request through the same guarded transport, for the few
+// calls that are not a plain GET (OAuth token exchange). The body is capped.
+func (c *Client) Do(req *http.Request) (*http.Response, []byte, error) {
+	if req.URL.Scheme != "https" {
+		return nil, nil, errors.New("fetch: Do requires https")
+	}
+	if req.Header.Get("User-Agent") == "" {
+		req.Header.Set("User-Agent", UserAgent)
+	}
+	res, err := c.http.Do(req)
+	if err != nil {
+		return nil, nil, err
+	}
+	defer res.Body.Close()
+	body, err := io.ReadAll(io.LimitReader(res.Body, c.maxBytes))
+	return res, body, err
+}

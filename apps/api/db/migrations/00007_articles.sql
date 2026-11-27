@@ -38,9 +38,6 @@ create table articles (
   updated_at      timestamptz not null default now(),
   deleted_at      timestamptz,
   killed_at       timestamptz,
-  search          tsvector    generated always as (
-                    to_tsvector('simple', title || ' ' || subtitle || ' ' || body_md)
-                  ) stored,
   constraint articles_published_has_time check (status <> 'published' or published_at is not null),
   constraint articles_scheduled_has_time check (status <> 'scheduled' or scheduled_at is not null)
 );
@@ -54,7 +51,6 @@ create index articles_featured_at_idx on articles (featured_at desc, id desc) wh
 create index articles_author_id_idx on articles (author_id, updated_at desc);
 create index articles_series_idx on articles (series_id, series_sort) where series_id is not null;
 create index articles_scheduled_idx on articles (scheduled_at) where status = 'scheduled';
-create index articles_search_idx on articles using gin (search);
 
 create table article_tags (
   article_id bigint not null references articles (id) on delete cascade,

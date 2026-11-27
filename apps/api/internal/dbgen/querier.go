@@ -66,6 +66,9 @@ type Querier interface {
 	DeleteExpiredOAuthStates(ctx context.Context) (int64, error)
 	DeleteExpiredSessions(ctx context.Context) (int64, error)
 	DeleteIdentity(ctx context.Context, arg DeleteIdentityParams) (int64, error)
+	// Everything personal goes; authored content stays, attributed to the
+	// anonymized row, so threads keep their shape.
+	DeletePersonalData(ctx context.Context, userID int64) error
 	DeleteSeries(ctx context.Context, arg DeleteSeriesParams) (int64, error)
 	DeleteSession(ctx context.Context, tokenHash []byte) error
 	DeleteUserSessions(ctx context.Context, userID int64) error
@@ -73,6 +76,10 @@ type Querier interface {
 	DomainSeenBefore(ctx context.Context, arg DomainSeenBeforeParams) (bool, error)
 	DropExhaustedJobs(ctx context.Context, maxAttempts int32) (int64, error)
 	EnqueueJob(ctx context.Context, arg EnqueueJobParams) error
+	ExportArticles(ctx context.Context, authorID int64) ([]ExportArticlesRow, error)
+	ExportComments(ctx context.Context, authorID int64) ([]ExportCommentsRow, error)
+	ExportLinks(ctx context.Context, authorID int64) ([]ExportLinksRow, error)
+	ExportNotes(ctx context.Context, authorID int64) ([]ExportNotesRow, error)
 	FailJob(ctx context.Context, arg FailJobParams) error
 	FeatureArticle(ctx context.Context, arg FeatureArticleParams) error
 	// Duplicate detection: the same canonical URL posted within the dedupe window.
@@ -86,7 +93,10 @@ type Querier interface {
 	GetArticleBySlug(ctx context.Context, arg GetArticleBySlugParams) (GetArticleBySlugRow, error)
 	GetArticleVersion(ctx context.Context, arg GetArticleVersionParams) (ArticleVersion, error)
 	GetComment(ctx context.Context, id int64) (GetCommentRow, error)
+	// What a new comment needs to check about the thing it is attached to.
+	GetCommentTarget(ctx context.Context, arg GetCommentTargetParams) (int64, error)
 	GetDomainRule(ctx context.Context, domain string) (DomainRule, error)
+	GetIdentity(ctx context.Context, arg GetIdentityParams) (UserIdentity, error)
 	GetLink(ctx context.Context, id int64) (GetLinkRow, error)
 	GetMedia(ctx context.Context, id int64) (Media, error)
 	GetMonthlyThread(ctx context.Context, arg GetMonthlyThreadParams) (GetMonthlyThreadRow, error)
@@ -101,6 +111,8 @@ type Querier interface {
 	GetUserByIdentity(ctx context.Context, arg GetUserByIdentityParams) (User, error)
 	GetUserByUsername(ctx context.Context, lower string) (User, error)
 	GetVote(ctx context.Context, arg GetVoteParams) (int16, error)
+	// Everything a vote or flag needs to know about its target, in one round trip.
+	GetVoteTarget(ctx context.Context, arg GetVoteTargetParams) (GetVoteTargetRow, error)
 	GrantBadge(ctx context.Context, arg GrantBadgeParams) error
 	HoldForReview(ctx context.Context, arg HoldForReviewParams) error
 	IsBlocked(ctx context.Context, arg IsBlockedParams) (bool, error)
@@ -120,7 +132,7 @@ type Querier interface {
 	ListArticleVersions(ctx context.Context, articleID int64) ([]ListArticleVersionsRow, error)
 	// The author's own list, drafts included.
 	ListArticlesByAuthorAll(ctx context.Context, arg ListArticlesByAuthorAllParams) ([]ListArticlesByAuthorAllRow, error)
-	ListArticlesByIDs(ctx context.Context, ids []int64) ([]ListArticlesByIDsRow, error)
+	ListArticlesByIDs(ctx context.Context, arg ListArticlesByIDsParams) ([]ListArticlesByIDsRow, error)
 	// Published articles, newest first. Keyset cursor is (published_at, id).
 	ListArticlesByPublished(ctx context.Context, arg ListArticlesByPublishedParams) ([]ListArticlesByPublishedRow, error)
 	// Popular articles. Keyset cursor is (score, id).
@@ -144,7 +156,7 @@ type Querier interface {
 	ListLikesForNotes(ctx context.Context, arg ListLikesForNotesParams) ([]int64, error)
 	// New: newest first. Keyset cursor is (created_at, id).
 	ListLinksByCreated(ctx context.Context, arg ListLinksByCreatedParams) ([]ListLinksByCreatedRow, error)
-	ListLinksByIDs(ctx context.Context, ids []int64) ([]ListLinksByIDsRow, error)
+	ListLinksByIDs(ctx context.Context, arg ListLinksByIDsParams) ([]ListLinksByIDsRow, error)
 	// Best: most upvoted first. Keyset cursor is (points, id).
 	ListLinksByPoints(ctx context.Context, arg ListLinksByPointsParams) ([]ListLinksByPointsRow, error)
 	// Top: ranked by the score the ranking job writes. Keyset cursor is (score, id).
@@ -162,7 +174,7 @@ type Querier interface {
 	ListNoteReplies(ctx context.Context, arg ListNoteRepliesParams) ([]ListNoteRepliesRow, error)
 	// Latest notes, excluding replies. Keyset cursor is (created_at, id).
 	ListNotes(ctx context.Context, arg ListNotesParams) ([]ListNotesRow, error)
-	ListNotesByIDs(ctx context.Context, ids []int64) ([]ListNotesByIDsRow, error)
+	ListNotesByIDs(ctx context.Context, arg ListNotesByIDsParams) ([]ListNotesByIDsRow, error)
 	ListNotifications(ctx context.Context, arg ListNotificationsParams) ([]ListNotificationsRow, error)
 	ListOpenReports(ctx context.Context, limit int32) ([]ListOpenReportsRow, error)
 	ListOpenToWork(ctx context.Context, limit int32) ([]User, error)
@@ -201,6 +213,8 @@ type Querier interface {
 	ReleaseHold(ctx context.Context, arg ReleaseHoldParams) (int64, error)
 	ReleaseStaleJobs(ctx context.Context) (int64, error)
 	RemoveFlag(ctx context.Context, arg RemoveFlagParams) (int64, error)
+	// A block also ends any follow in either direction.
+	RemoveFollowsBetween(ctx context.Context, arg RemoveFollowsBetweenParams) error
 	RemoveMutedWord(ctx context.Context, arg RemoveMutedWordParams) (int64, error)
 	ReplaceUserLinks(ctx context.Context, userID int64) error
 	ReplaceUserRepos(ctx context.Context, userID int64) error
@@ -211,7 +225,8 @@ type Querier interface {
 	SaveArticleVersion(ctx context.Context, arg SaveArticleVersionParams) error
 	ScheduleArticle(ctx context.Context, arg ScheduleArticleParams) (Article, error)
 	// Full-text search over everything, on the `simple` config so Uzbek, Russian and
-	// English all behave the same. Queries arrive already normalized by translit.ForSearch.
+	// English all behave the same. The query comes in both scripts (q and q_cyrl) so
+	// it matches posts written in either.
 	SearchAll(ctx context.Context, arg SearchAllParams) ([]SearchAllRow, error)
 	SearchTags(ctx context.Context, arg SearchTagsParams) ([]Tag, error)
 	SearchUsers(ctx context.Context, arg SearchUsersParams) ([]User, error)

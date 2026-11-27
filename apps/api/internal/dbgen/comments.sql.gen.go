@@ -30,7 +30,7 @@ func (q *Queries) CountAuthorCommentsSince(ctx context.Context, arg CountAuthorC
 const createComment = `-- name: CreateComment :one
 insert into comments (subject_type, subject_id, author_id, parent_id, body_md, body_html)
 values ($1, $2, $3, $4, $5, $6)
-returning id, subject_type, subject_id, author_id, parent_id, depth, path, body_md, body_html, points, flag_count, created_at, edited_at, deleted_at, killed_at, search
+returning id, subject_type, subject_id, author_id, parent_id, depth, path, body_md, body_html, points, flag_count, created_at, edited_at, deleted_at, killed_at
 `
 
 type CreateCommentParams struct {
@@ -68,13 +68,12 @@ func (q *Queries) CreateComment(ctx context.Context, arg CreateCommentParams) (C
 		&i.EditedAt,
 		&i.DeletedAt,
 		&i.KilledAt,
-		&i.Search,
 	)
 	return i, err
 }
 
 const getComment = `-- name: GetComment :one
-select c.id, c.subject_type, c.subject_id, c.author_id, c.parent_id, c.depth, c.path, c.body_md, c.body_html, c.points, c.flag_count, c.created_at, c.edited_at, c.deleted_at, c.killed_at, c.search, u.id, u.username, u.username_lower, u.display_name, u.pronouns, u.bio, u.readme_md, u.readme_html, u.role_title, u.company, u.location, u.open_to_work, u.accent, u.avatar_media, u.banner_media, u.lang, u.script, u.theme, u.karma, u.is_moderator, u.is_admin, u.email, u.email_domain, u.created_at, u.updated_at, u.banned_at, u.ban_reason, u.deleted_at
+select c.id, c.subject_type, c.subject_id, c.author_id, c.parent_id, c.depth, c.path, c.body_md, c.body_html, c.points, c.flag_count, c.created_at, c.edited_at, c.deleted_at, c.killed_at, u.id, u.username, u.username_lower, u.display_name, u.pronouns, u.bio, u.readme_md, u.readme_html, u.role_title, u.company, u.location, u.open_to_work, u.accent, u.avatar_media, u.banner_media, u.lang, u.script, u.theme, u.karma, u.is_moderator, u.is_admin, u.email, u.email_domain, u.created_at, u.updated_at, u.banned_at, u.ban_reason, u.deleted_at
 from comments c join users u on u.id = c.author_id
 where c.id = $1 and c.deleted_at is null
 `
@@ -103,7 +102,6 @@ func (q *Queries) GetComment(ctx context.Context, id int64) (GetCommentRow, erro
 		&i.Comment.EditedAt,
 		&i.Comment.DeletedAt,
 		&i.Comment.KilledAt,
-		&i.Comment.Search,
 		&i.User.ID,
 		&i.User.Username,
 		&i.User.UsernameLower,
@@ -136,22 +134,46 @@ func (q *Queries) GetComment(ctx context.Context, id int64) (GetCommentRow, erro
 	return i, err
 }
 
+const getCommentTarget = `-- name: GetCommentTarget :one
+select
+  coalesce(case $1::text
+    when 'link'    then (select author_id from links where id = $2::bigint
+                         and deleted_at is null and killed_at is null)
+    when 'article' then (select author_id from articles where id = $2::bigint
+                         and deleted_at is null and killed_at is null and status = 'published')
+  end, 0)::bigint as author_id
+`
+
+type GetCommentTargetParams struct {
+	SubjectType string
+	SubjectID   int64
+}
+
+// What a new comment needs to check about the thing it is attached to.
+func (q *Queries) GetCommentTarget(ctx context.Context, arg GetCommentTargetParams) (int64, error) {
+	row := q.db.QueryRow(ctx, getCommentTarget, arg.SubjectType, arg.SubjectID)
+	var author_id int64
+	err := row.Scan(&author_id)
+	return author_id, err
+}
+
 const killComment = `-- name: KillComment :exec
-update comments set killed_at = case when $2::boolean then now() else null end where id = $1
+update comments set killed_at = case when $1::boolean then now() else null end
+where id = $2::bigint
 `
 
 type KillCommentParams struct {
+	Enabled bool
 	ID      int64
-	Column2 bool
 }
 
 func (q *Queries) KillComment(ctx context.Context, arg KillCommentParams) error {
-	_, err := q.db.Exec(ctx, killComment, arg.ID, arg.Column2)
+	_, err := q.db.Exec(ctx, killComment, arg.Enabled, arg.ID)
 	return err
 }
 
 const lastCommentAt = `-- name: LastCommentAt :one
-select max(created_at)::timestamptz as last_at from comments where author_id = $1
+select coalesce(max(created_at), 'epoch')::timestamptz as last_at from comments where author_id = $1
 `
 
 // A reply may come at most once every cooldown window, which grows with depth.
@@ -163,7 +185,7 @@ func (q *Queries) LastCommentAt(ctx context.Context, authorID int64) (time.Time,
 }
 
 const listCommentsByAuthor = `-- name: ListCommentsByAuthor :many
-select c.id, c.subject_type, c.subject_id, c.author_id, c.parent_id, c.depth, c.path, c.body_md, c.body_html, c.points, c.flag_count, c.created_at, c.edited_at, c.deleted_at, c.killed_at, c.search, u.id, u.username, u.username_lower, u.display_name, u.pronouns, u.bio, u.readme_md, u.readme_html, u.role_title, u.company, u.location, u.open_to_work, u.accent, u.avatar_media, u.banner_media, u.lang, u.script, u.theme, u.karma, u.is_moderator, u.is_admin, u.email, u.email_domain, u.created_at, u.updated_at, u.banned_at, u.ban_reason, u.deleted_at
+select c.id, c.subject_type, c.subject_id, c.author_id, c.parent_id, c.depth, c.path, c.body_md, c.body_html, c.points, c.flag_count, c.created_at, c.edited_at, c.deleted_at, c.killed_at, u.id, u.username, u.username_lower, u.display_name, u.pronouns, u.bio, u.readme_md, u.readme_html, u.role_title, u.company, u.location, u.open_to_work, u.accent, u.avatar_media, u.banner_media, u.lang, u.script, u.theme, u.karma, u.is_moderator, u.is_admin, u.email, u.email_domain, u.created_at, u.updated_at, u.banned_at, u.ban_reason, u.deleted_at
 from comments c join users u on u.id = c.author_id
 where c.author_id = $1::bigint
   and c.deleted_at is null and c.killed_at is null
@@ -218,7 +240,6 @@ func (q *Queries) ListCommentsByAuthor(ctx context.Context, arg ListCommentsByAu
 			&i.Comment.EditedAt,
 			&i.Comment.DeletedAt,
 			&i.Comment.KilledAt,
-			&i.Comment.Search,
 			&i.User.ID,
 			&i.User.Username,
 			&i.User.UsernameLower,
@@ -259,7 +280,7 @@ func (q *Queries) ListCommentsByAuthor(ctx context.Context, arg ListCommentsByAu
 }
 
 const listCommentsForSubject = `-- name: ListCommentsForSubject :many
-select c.id, c.subject_type, c.subject_id, c.author_id, c.parent_id, c.depth, c.path, c.body_md, c.body_html, c.points, c.flag_count, c.created_at, c.edited_at, c.deleted_at, c.killed_at, c.search, u.id, u.username, u.username_lower, u.display_name, u.pronouns, u.bio, u.readme_md, u.readme_html, u.role_title, u.company, u.location, u.open_to_work, u.accent, u.avatar_media, u.banner_media, u.lang, u.script, u.theme, u.karma, u.is_moderator, u.is_admin, u.email, u.email_domain, u.created_at, u.updated_at, u.banned_at, u.ban_reason, u.deleted_at,
+select c.id, c.subject_type, c.subject_id, c.author_id, c.parent_id, c.depth, c.path, c.body_md, c.body_html, c.points, c.flag_count, c.created_at, c.edited_at, c.deleted_at, c.killed_at, u.id, u.username, u.username_lower, u.display_name, u.pronouns, u.bio, u.readme_md, u.readme_html, u.role_title, u.company, u.location, u.open_to_work, u.accent, u.avatar_media, u.banner_media, u.lang, u.script, u.theme, u.karma, u.is_moderator, u.is_admin, u.email, u.email_domain, u.created_at, u.updated_at, u.banned_at, u.ban_reason, u.deleted_at,
        coalesce(v.value, 0)::int as viewer_vote,
        bw_hidden($1::bigint, c.author_id) as collapsed_hidden,
        bw_word_muted($1::bigint, c.body_md) as collapsed_muted
@@ -319,7 +340,6 @@ func (q *Queries) ListCommentsForSubject(ctx context.Context, arg ListCommentsFo
 			&i.Comment.EditedAt,
 			&i.Comment.DeletedAt,
 			&i.Comment.KilledAt,
-			&i.Comment.Search,
 			&i.User.ID,
 			&i.User.Username,
 			&i.User.UsernameLower,
@@ -398,7 +418,7 @@ func (q *Queries) SubjectAuthor(ctx context.Context, arg SubjectAuthorParams) (i
 const updateComment = `-- name: UpdateComment :one
 update comments set body_md = $2, body_html = $3, edited_at = now()
 where id = $1 and deleted_at is null
-returning id, subject_type, subject_id, author_id, parent_id, depth, path, body_md, body_html, points, flag_count, created_at, edited_at, deleted_at, killed_at, search
+returning id, subject_type, subject_id, author_id, parent_id, depth, path, body_md, body_html, points, flag_count, created_at, edited_at, deleted_at, killed_at
 `
 
 type UpdateCommentParams struct {
@@ -426,7 +446,6 @@ func (q *Queries) UpdateComment(ctx context.Context, arg UpdateCommentParams) (C
 		&i.EditedAt,
 		&i.DeletedAt,
 		&i.KilledAt,
-		&i.Search,
 	)
 	return i, err
 }

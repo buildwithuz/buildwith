@@ -20,7 +20,8 @@ update links set title = $2, slug = $3, updated_at = now() where id = $1;
 update links set deleted_at = now() where id = $1 and deleted_at is null;
 
 -- name: KillLink :exec
-update links set killed_at = case when $2::boolean then now() else null end where id = $1;
+update links set killed_at = case when sqlc.arg(enabled)::boolean then now() else null end
+where id = sqlc.arg(id)::bigint;
 
 -- name: SetLinkScore :exec
 update links set score = $2 where id = $1;
@@ -108,7 +109,8 @@ limit sqlc.arg(page_limit)::int;
 -- name: ListLinksByIDs :many
 select sqlc.embed(l), sqlc.embed(u)
 from links l join users u on u.id = l.author_id
-where l.id = any(sqlc.arg(ids)::bigint[]) and l.deleted_at is null;
+where l.id = any(sqlc.arg(ids)::bigint[]) and l.deleted_at is null
+  and not bw_hidden(sqlc.narg(viewer_id)::bigint, l.author_id);
 
 -- Candidates for the ranking job: everything posted in the last seven days.
 -- name: ListRankCandidates :many

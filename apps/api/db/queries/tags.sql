@@ -13,8 +13,9 @@ select * from tags where id = any(sqlc.arg(ids)::bigint[]);
 select * from tags order by post_count desc, slug limit $1;
 
 -- name: SearchTags :many
-select * from tags where slug like $1 || '%' or lower(name) like '%' || $1 || '%'
-order by post_count desc limit $2;
+select * from tags
+where slug like sqlc.arg(q)::text || '%' or lower(name) like '%' || sqlc.arg(q)::text || '%'
+order by post_count desc limit sqlc.arg(page_limit)::int;
 
 -- name: UpdateTagDescription :exec
 update tags set description = $2 where id = $1;

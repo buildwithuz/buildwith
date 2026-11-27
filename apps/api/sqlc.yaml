@@ -23,16 +23,10 @@ sql:
         overrides:
           - db_type: "timestamptz"
             go_type: "time.Time"
+          - db_type: "date"
+            go_type: "time.Time"
           - db_type: "timestamptz"
             nullable: true
             go_type:
               type: "time.Time"
               pointer: true
-          - column: "links.search"
-            go_type: "string"
-          - column: "notes.search"
-            go_type: "string"
-          - column: "articles.search"
-            go_type: "string"
-          - column: "comments.search"
-            go_type: "string"

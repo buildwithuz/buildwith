@@ -51,7 +51,7 @@ func (q *Queries) CountAuthorArticlesSince(ctx context.Context, arg CountAuthorA
 }
 
 const createArticle = `-- name: CreateArticle :one
-insert into articles (author_id, slug, title) values ($1, $2, $3) returning id, author_id, slug, title, subtitle, cover_media, body_md, body_html, toc, lang, canonical_url, series_id, series_sort, status, published_at, scheduled_at, featured_at, reading_minutes, points, comment_count, flag_count, score, created_at, updated_at, deleted_at, killed_at, search
+insert into articles (author_id, slug, title) values ($1, $2, $3) returning id, author_id, slug, title, subtitle, cover_media, body_md, body_html, toc, lang, canonical_url, series_id, series_sort, status, published_at, scheduled_at, featured_at, reading_minutes, points, comment_count, flag_count, score, created_at, updated_at, deleted_at, killed_at
 `
 
 type CreateArticleParams struct {
@@ -90,7 +90,6 @@ func (q *Queries) CreateArticle(ctx context.Context, arg CreateArticleParams) (A
 		&i.UpdatedAt,
 		&i.DeletedAt,
 		&i.KilledAt,
-		&i.Search,
 	)
 	return i, err
 }
@@ -143,21 +142,22 @@ func (q *Queries) DeleteSeries(ctx context.Context, arg DeleteSeriesParams) (int
 }
 
 const featureArticle = `-- name: FeatureArticle :exec
-update articles set featured_at = case when $2::boolean then now() else null end where id = $1
+update articles set featured_at = case when $1::boolean then now() else null end
+where id = $2::bigint
 `
 
 type FeatureArticleParams struct {
+	Enabled bool
 	ID      int64
-	Column2 bool
 }
 
 func (q *Queries) FeatureArticle(ctx context.Context, arg FeatureArticleParams) error {
-	_, err := q.db.Exec(ctx, featureArticle, arg.ID, arg.Column2)
+	_, err := q.db.Exec(ctx, featureArticle, arg.Enabled, arg.ID)
 	return err
 }
 
 const getArticle = `-- name: GetArticle :one
-select a.id, a.author_id, a.slug, a.title, a.subtitle, a.cover_media, a.body_md, a.body_html, a.toc, a.lang, a.canonical_url, a.series_id, a.series_sort, a.status, a.published_at, a.scheduled_at, a.featured_at, a.reading_minutes, a.points, a.comment_count, a.flag_count, a.score, a.created_at, a.updated_at, a.deleted_at, a.killed_at, a.search, u.id, u.username, u.username_lower, u.display_name, u.pronouns, u.bio, u.readme_md, u.readme_html, u.role_title, u.company, u.location, u.open_to_work, u.accent, u.avatar_media, u.banner_media, u.lang, u.script, u.theme, u.karma, u.is_moderator, u.is_admin, u.email, u.email_domain, u.created_at, u.updated_at, u.banned_at, u.ban_reason, u.deleted_at
+select a.id, a.author_id, a.slug, a.title, a.subtitle, a.cover_media, a.body_md, a.body_html, a.toc, a.lang, a.canonical_url, a.series_id, a.series_sort, a.status, a.published_at, a.scheduled_at, a.featured_at, a.reading_minutes, a.points, a.comment_count, a.flag_count, a.score, a.created_at, a.updated_at, a.deleted_at, a.killed_at, u.id, u.username, u.username_lower, u.display_name, u.pronouns, u.bio, u.readme_md, u.readme_html, u.role_title, u.company, u.location, u.open_to_work, u.accent, u.avatar_media, u.banner_media, u.lang, u.script, u.theme, u.karma, u.is_moderator, u.is_admin, u.email, u.email_domain, u.created_at, u.updated_at, u.banned_at, u.ban_reason, u.deleted_at
 from articles a join users u on u.id = a.author_id
 where a.id = $1 and a.deleted_at is null
 `
@@ -197,7 +197,6 @@ func (q *Queries) GetArticle(ctx context.Context, id int64) (GetArticleRow, erro
 		&i.Article.UpdatedAt,
 		&i.Article.DeletedAt,
 		&i.Article.KilledAt,
-		&i.Article.Search,
 		&i.User.ID,
 		&i.User.Username,
 		&i.User.UsernameLower,
@@ -231,7 +230,7 @@ func (q *Queries) GetArticle(ctx context.Context, id int64) (GetArticleRow, erro
 }
 
 const getArticleBySlug = `-- name: GetArticleBySlug :one
-select a.id, a.author_id, a.slug, a.title, a.subtitle, a.cover_media, a.body_md, a.body_html, a.toc, a.lang, a.canonical_url, a.series_id, a.series_sort, a.status, a.published_at, a.scheduled_at, a.featured_at, a.reading_minutes, a.points, a.comment_count, a.flag_count, a.score, a.created_at, a.updated_at, a.deleted_at, a.killed_at, a.search, u.id, u.username, u.username_lower, u.display_name, u.pronouns, u.bio, u.readme_md, u.readme_html, u.role_title, u.company, u.location, u.open_to_work, u.accent, u.avatar_media, u.banner_media, u.lang, u.script, u.theme, u.karma, u.is_moderator, u.is_admin, u.email, u.email_domain, u.created_at, u.updated_at, u.banned_at, u.ban_reason, u.deleted_at
+select a.id, a.author_id, a.slug, a.title, a.subtitle, a.cover_media, a.body_md, a.body_html, a.toc, a.lang, a.canonical_url, a.series_id, a.series_sort, a.status, a.published_at, a.scheduled_at, a.featured_at, a.reading_minutes, a.points, a.comment_count, a.flag_count, a.score, a.created_at, a.updated_at, a.deleted_at, a.killed_at, u.id, u.username, u.username_lower, u.display_name, u.pronouns, u.bio, u.readme_md, u.readme_html, u.role_title, u.company, u.location, u.open_to_work, u.accent, u.avatar_media, u.banner_media, u.lang, u.script, u.theme, u.karma, u.is_moderator, u.is_admin, u.email, u.email_domain, u.created_at, u.updated_at, u.banned_at, u.ban_reason, u.deleted_at
 from articles a join users u on u.id = a.author_id
 where u.username_lower = lower($1::text)
   and a.slug = $2::text and a.deleted_at is null
@@ -277,7 +276,6 @@ func (q *Queries) GetArticleBySlug(ctx context.Context, arg GetArticleBySlugPara
 		&i.Article.UpdatedAt,
 		&i.Article.DeletedAt,
 		&i.Article.KilledAt,
-		&i.Article.Search,
 		&i.User.ID,
 		&i.User.Username,
 		&i.User.UsernameLower,
@@ -376,16 +374,17 @@ func (q *Queries) GetSeriesBySlug(ctx context.Context, arg GetSeriesBySlugParams
 }
 
 const killArticle = `-- name: KillArticle :exec
-update articles set killed_at = case when $2::boolean then now() else null end where id = $1
+update articles set killed_at = case when $1::boolean then now() else null end
+where id = $2::bigint
 `
 
 type KillArticleParams struct {
+	Enabled bool
 	ID      int64
-	Column2 bool
 }
 
 func (q *Queries) KillArticle(ctx context.Context, arg KillArticleParams) error {
-	_, err := q.db.Exec(ctx, killArticle, arg.ID, arg.Column2)
+	_, err := q.db.Exec(ctx, killArticle, arg.Enabled, arg.ID)
 	return err
 }
 
@@ -474,7 +473,7 @@ func (q *Queries) ListArticleVersions(ctx context.Context, articleID int64) ([]L
 }
 
 const listArticlesByAuthorAll = `-- name: ListArticlesByAuthorAll :many
-select a.id, a.author_id, a.slug, a.title, a.subtitle, a.cover_media, a.body_md, a.body_html, a.toc, a.lang, a.canonical_url, a.series_id, a.series_sort, a.status, a.published_at, a.scheduled_at, a.featured_at, a.reading_minutes, a.points, a.comment_count, a.flag_count, a.score, a.created_at, a.updated_at, a.deleted_at, a.killed_at, a.search, u.id, u.username, u.username_lower, u.display_name, u.pronouns, u.bio, u.readme_md, u.readme_html, u.role_title, u.company, u.location, u.open_to_work, u.accent, u.avatar_media, u.banner_media, u.lang, u.script, u.theme, u.karma, u.is_moderator, u.is_admin, u.email, u.email_domain, u.created_at, u.updated_at, u.banned_at, u.ban_reason, u.deleted_at
+select a.id, a.author_id, a.slug, a.title, a.subtitle, a.cover_media, a.body_md, a.body_html, a.toc, a.lang, a.canonical_url, a.series_id, a.series_sort, a.status, a.published_at, a.scheduled_at, a.featured_at, a.reading_minutes, a.points, a.comment_count, a.flag_count, a.score, a.created_at, a.updated_at, a.deleted_at, a.killed_at, u.id, u.username, u.username_lower, u.display_name, u.pronouns, u.bio, u.readme_md, u.readme_html, u.role_title, u.company, u.location, u.open_to_work, u.accent, u.avatar_media, u.banner_media, u.lang, u.script, u.theme, u.karma, u.is_moderator, u.is_admin, u.email, u.email_domain, u.created_at, u.updated_at, u.banned_at, u.ban_reason, u.deleted_at
 from articles a join users u on u.id = a.author_id
 where a.author_id = $1::bigint and a.deleted_at is null
   and ($2::text is null or a.status = $2::text)
@@ -530,7 +529,6 @@ func (q *Queries) ListArticlesByAuthorAll(ctx context.Context, arg ListArticlesB
 			&i.Article.UpdatedAt,
 			&i.Article.DeletedAt,
 			&i.Article.KilledAt,
-			&i.Article.Search,
 			&i.User.ID,
 			&i.User.Username,
 			&i.User.UsernameLower,
@@ -571,18 +569,25 @@ func (q *Queries) ListArticlesByAuthorAll(ctx context.Context, arg ListArticlesB
 }
 
 const listArticlesByIDs = `-- name: ListArticlesByIDs :many
-select a.id, a.author_id, a.slug, a.title, a.subtitle, a.cover_media, a.body_md, a.body_html, a.toc, a.lang, a.canonical_url, a.series_id, a.series_sort, a.status, a.published_at, a.scheduled_at, a.featured_at, a.reading_minutes, a.points, a.comment_count, a.flag_count, a.score, a.created_at, a.updated_at, a.deleted_at, a.killed_at, a.search, u.id, u.username, u.username_lower, u.display_name, u.pronouns, u.bio, u.readme_md, u.readme_html, u.role_title, u.company, u.location, u.open_to_work, u.accent, u.avatar_media, u.banner_media, u.lang, u.script, u.theme, u.karma, u.is_moderator, u.is_admin, u.email, u.email_domain, u.created_at, u.updated_at, u.banned_at, u.ban_reason, u.deleted_at
+select a.id, a.author_id, a.slug, a.title, a.subtitle, a.cover_media, a.body_md, a.body_html, a.toc, a.lang, a.canonical_url, a.series_id, a.series_sort, a.status, a.published_at, a.scheduled_at, a.featured_at, a.reading_minutes, a.points, a.comment_count, a.flag_count, a.score, a.created_at, a.updated_at, a.deleted_at, a.killed_at, u.id, u.username, u.username_lower, u.display_name, u.pronouns, u.bio, u.readme_md, u.readme_html, u.role_title, u.company, u.location, u.open_to_work, u.accent, u.avatar_media, u.banner_media, u.lang, u.script, u.theme, u.karma, u.is_moderator, u.is_admin, u.email, u.email_domain, u.created_at, u.updated_at, u.banned_at, u.ban_reason, u.deleted_at
 from articles a join users u on u.id = a.author_id
 where a.id = any($1::bigint[]) and a.deleted_at is null
+  and a.status = 'published'
+  and not bw_hidden($2::bigint, a.author_id)
 `
+
+type ListArticlesByIDsParams struct {
+	Ids      []int64
+	ViewerID *int64
+}
 
 type ListArticlesByIDsRow struct {
 	Article Article
 	User    User
 }
 
-func (q *Queries) ListArticlesByIDs(ctx context.Context, ids []int64) ([]ListArticlesByIDsRow, error) {
-	rows, err := q.db.Query(ctx, listArticlesByIDs, ids)
+func (q *Queries) ListArticlesByIDs(ctx context.Context, arg ListArticlesByIDsParams) ([]ListArticlesByIDsRow, error) {
+	rows, err := q.db.Query(ctx, listArticlesByIDs, arg.Ids, arg.ViewerID)
 	if err != nil {
 		return nil, err
 	}
@@ -617,7 +622,6 @@ func (q *Queries) ListArticlesByIDs(ctx context.Context, ids []int64) ([]ListArt
 			&i.Article.UpdatedAt,
 			&i.Article.DeletedAt,
 			&i.Article.KilledAt,
-			&i.Article.Search,
 			&i.User.ID,
 			&i.User.Username,
 			&i.User.UsernameLower,
@@ -658,7 +662,7 @@ func (q *Queries) ListArticlesByIDs(ctx context.Context, ids []int64) ([]ListArt
 }
 
 const listArticlesByPublished = `-- name: ListArticlesByPublished :many
-select a.id, a.author_id, a.slug, a.title, a.subtitle, a.cover_media, a.body_md, a.body_html, a.toc, a.lang, a.canonical_url, a.series_id, a.series_sort, a.status, a.published_at, a.scheduled_at, a.featured_at, a.reading_minutes, a.points, a.comment_count, a.flag_count, a.score, a.created_at, a.updated_at, a.deleted_at, a.killed_at, a.search, u.id, u.username, u.username_lower, u.display_name, u.pronouns, u.bio, u.readme_md, u.readme_html, u.role_title, u.company, u.location, u.open_to_work, u.accent, u.avatar_media, u.banner_media, u.lang, u.script, u.theme, u.karma, u.is_moderator, u.is_admin, u.email, u.email_domain, u.created_at, u.updated_at, u.banned_at, u.ban_reason, u.deleted_at
+select a.id, a.author_id, a.slug, a.title, a.subtitle, a.cover_media, a.body_md, a.body_html, a.toc, a.lang, a.canonical_url, a.series_id, a.series_sort, a.status, a.published_at, a.scheduled_at, a.featured_at, a.reading_minutes, a.points, a.comment_count, a.flag_count, a.score, a.created_at, a.updated_at, a.deleted_at, a.killed_at, u.id, u.username, u.username_lower, u.display_name, u.pronouns, u.bio, u.readme_md, u.readme_html, u.role_title, u.company, u.location, u.open_to_work, u.accent, u.avatar_media, u.banner_media, u.lang, u.script, u.theme, u.karma, u.is_moderator, u.is_admin, u.email, u.email_domain, u.created_at, u.updated_at, u.banned_at, u.ban_reason, u.deleted_at
 from articles a
 join users u on u.id = a.author_id
 where a.status = 'published' and a.deleted_at is null and a.killed_at is null
@@ -738,7 +742,6 @@ func (q *Queries) ListArticlesByPublished(ctx context.Context, arg ListArticlesB
 			&i.Article.UpdatedAt,
 			&i.Article.DeletedAt,
 			&i.Article.KilledAt,
-			&i.Article.Search,
 			&i.User.ID,
 			&i.User.Username,
 			&i.User.UsernameLower,
@@ -779,7 +782,7 @@ func (q *Queries) ListArticlesByPublished(ctx context.Context, arg ListArticlesB
 }
 
 const listArticlesByScore = `-- name: ListArticlesByScore :many
-select a.id, a.author_id, a.slug, a.title, a.subtitle, a.cover_media, a.body_md, a.body_html, a.toc, a.lang, a.canonical_url, a.series_id, a.series_sort, a.status, a.published_at, a.scheduled_at, a.featured_at, a.reading_minutes, a.points, a.comment_count, a.flag_count, a.score, a.created_at, a.updated_at, a.deleted_at, a.killed_at, a.search, u.id, u.username, u.username_lower, u.display_name, u.pronouns, u.bio, u.readme_md, u.readme_html, u.role_title, u.company, u.location, u.open_to_work, u.accent, u.avatar_media, u.banner_media, u.lang, u.script, u.theme, u.karma, u.is_moderator, u.is_admin, u.email, u.email_domain, u.created_at, u.updated_at, u.banned_at, u.ban_reason, u.deleted_at
+select a.id, a.author_id, a.slug, a.title, a.subtitle, a.cover_media, a.body_md, a.body_html, a.toc, a.lang, a.canonical_url, a.series_id, a.series_sort, a.status, a.published_at, a.scheduled_at, a.featured_at, a.reading_minutes, a.points, a.comment_count, a.flag_count, a.score, a.created_at, a.updated_at, a.deleted_at, a.killed_at, u.id, u.username, u.username_lower, u.display_name, u.pronouns, u.bio, u.readme_md, u.readme_html, u.role_title, u.company, u.location, u.open_to_work, u.accent, u.avatar_media, u.banner_media, u.lang, u.script, u.theme, u.karma, u.is_moderator, u.is_admin, u.email, u.email_domain, u.created_at, u.updated_at, u.banned_at, u.ban_reason, u.deleted_at
 from articles a
 join users u on u.id = a.author_id
 where a.status = 'published' and a.deleted_at is null and a.killed_at is null
@@ -853,7 +856,6 @@ func (q *Queries) ListArticlesByScore(ctx context.Context, arg ListArticlesBySco
 			&i.Article.UpdatedAt,
 			&i.Article.DeletedAt,
 			&i.Article.KilledAt,
-			&i.Article.Search,
 			&i.User.ID,
 			&i.User.Username,
 			&i.User.UsernameLower,
@@ -959,7 +961,7 @@ const publishArticle = `-- name: PublishArticle :one
 update articles set status = 'published', published_at = coalesce(published_at, now()),
   scheduled_at = null, updated_at = now()
 where id = $1 and deleted_at is null
-returning id, author_id, slug, title, subtitle, cover_media, body_md, body_html, toc, lang, canonical_url, series_id, series_sort, status, published_at, scheduled_at, featured_at, reading_minutes, points, comment_count, flag_count, score, created_at, updated_at, deleted_at, killed_at, search
+returning id, author_id, slug, title, subtitle, cover_media, body_md, body_html, toc, lang, canonical_url, series_id, series_sort, status, published_at, scheduled_at, featured_at, reading_minutes, points, comment_count, flag_count, score, created_at, updated_at, deleted_at, killed_at
 `
 
 func (q *Queries) PublishArticle(ctx context.Context, id int64) (Article, error) {
@@ -992,7 +994,6 @@ func (q *Queries) PublishArticle(ctx context.Context, id int64) (Article, error)
 		&i.UpdatedAt,
 		&i.DeletedAt,
 		&i.KilledAt,
-		&i.Search,
 	)
 	return i, err
 }
@@ -1003,7 +1004,7 @@ update articles set
   canonical_url = $8, cover_media = $9, series_id = $10, series_sort = $11,
   reading_minutes = $12, slug = $13, updated_at = now()
 where id = $1 and deleted_at is null
-returning id, author_id, slug, title, subtitle, cover_media, body_md, body_html, toc, lang, canonical_url, series_id, series_sort, status, published_at, scheduled_at, featured_at, reading_minutes, points, comment_count, flag_count, score, created_at, updated_at, deleted_at, killed_at, search
+returning id, author_id, slug, title, subtitle, cover_media, body_md, body_html, toc, lang, canonical_url, series_id, series_sort, status, published_at, scheduled_at, featured_at, reading_minutes, points, comment_count, flag_count, score, created_at, updated_at, deleted_at, killed_at
 `
 
 type SaveArticleDraftParams struct {
@@ -1066,7 +1067,6 @@ func (q *Queries) SaveArticleDraft(ctx context.Context, arg SaveArticleDraftPara
 		&i.UpdatedAt,
 		&i.DeletedAt,
 		&i.KilledAt,
-		&i.Search,
 	)
 	return i, err
 }
@@ -1090,7 +1090,7 @@ func (q *Queries) SaveArticleVersion(ctx context.Context, arg SaveArticleVersion
 const scheduleArticle = `-- name: ScheduleArticle :one
 update articles set status = 'scheduled', scheduled_at = $2, updated_at = now()
 where id = $1 and deleted_at is null
-returning id, author_id, slug, title, subtitle, cover_media, body_md, body_html, toc, lang, canonical_url, series_id, series_sort, status, published_at, scheduled_at, featured_at, reading_minutes, points, comment_count, flag_count, score, created_at, updated_at, deleted_at, killed_at, search
+returning id, author_id, slug, title, subtitle, cover_media, body_md, body_html, toc, lang, canonical_url, series_id, series_sort, status, published_at, scheduled_at, featured_at, reading_minutes, points, comment_count, flag_count, score, created_at, updated_at, deleted_at, killed_at
 `
 
 type ScheduleArticleParams struct {
@@ -1128,7 +1128,6 @@ func (q *Queries) ScheduleArticle(ctx context.Context, arg ScheduleArticleParams
 		&i.UpdatedAt,
 		&i.DeletedAt,
 		&i.KilledAt,
-		&i.Search,
 	)
 	return i, err
 }
@@ -1200,7 +1199,7 @@ func (q *Queries) TrimArticleVersions(ctx context.Context, arg TrimArticleVersio
 const unpublishArticle = `-- name: UnpublishArticle :one
 update articles set status = 'draft', scheduled_at = null, updated_at = now()
 where id = $1 and deleted_at is null
-returning id, author_id, slug, title, subtitle, cover_media, body_md, body_html, toc, lang, canonical_url, series_id, series_sort, status, published_at, scheduled_at, featured_at, reading_minutes, points, comment_count, flag_count, score, created_at, updated_at, deleted_at, killed_at, search
+returning id, author_id, slug, title, subtitle, cover_media, body_md, body_html, toc, lang, canonical_url, series_id, series_sort, status, published_at, scheduled_at, featured_at, reading_minutes, points, comment_count, flag_count, score, created_at, updated_at, deleted_at, killed_at
 `
 
 func (q *Queries) UnpublishArticle(ctx context.Context, id int64) (Article, error) {
@@ -1233,7 +1232,6 @@ func (q *Queries) UnpublishArticle(ctx context.Context, id int64) (Article, erro
 		&i.UpdatedAt,
 		&i.DeletedAt,
 		&i.KilledAt,
-		&i.Search,
 	)
 	return i, err
 }

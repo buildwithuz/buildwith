@@ -94,7 +94,7 @@ const createNote = `-- name: CreateNote :one
 insert into notes (author_id, body_md, body_html, code_lang, code_body, code_html,
                    reply_to_id, root_id, quote_of_id, repost_of_id, reply_policy)
 values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-returning id, author_id, body_md, body_html, code_lang, code_body, code_html, reply_to_id, root_id, quote_of_id, repost_of_id, reply_policy, like_count, repost_count, quote_count, reply_count, flag_count, promoted_link_id, preview_url, preview_title, preview_desc, preview_media, preview_domain, created_at, edited_at, deleted_at, killed_at, search
+returning id, author_id, body_md, body_html, code_lang, code_body, code_html, reply_to_id, root_id, quote_of_id, repost_of_id, reply_policy, like_count, repost_count, quote_count, reply_count, flag_count, promoted_link_id, preview_url, preview_title, preview_desc, preview_media, preview_domain, created_at, edited_at, deleted_at, killed_at
 `
 
 type CreateNoteParams struct {
@@ -154,7 +154,6 @@ func (q *Queries) CreateNote(ctx context.Context, arg CreateNoteParams) (Note, e
 		&i.EditedAt,
 		&i.DeletedAt,
 		&i.KilledAt,
-		&i.Search,
 	)
 	return i, err
 }
@@ -177,7 +176,7 @@ func (q *Queries) FindRepost(ctx context.Context, arg FindRepostParams) (int64, 
 }
 
 const getNote = `-- name: GetNote :one
-select n.id, n.author_id, n.body_md, n.body_html, n.code_lang, n.code_body, n.code_html, n.reply_to_id, n.root_id, n.quote_of_id, n.repost_of_id, n.reply_policy, n.like_count, n.repost_count, n.quote_count, n.reply_count, n.flag_count, n.promoted_link_id, n.preview_url, n.preview_title, n.preview_desc, n.preview_media, n.preview_domain, n.created_at, n.edited_at, n.deleted_at, n.killed_at, n.search, u.id, u.username, u.username_lower, u.display_name, u.pronouns, u.bio, u.readme_md, u.readme_html, u.role_title, u.company, u.location, u.open_to_work, u.accent, u.avatar_media, u.banner_media, u.lang, u.script, u.theme, u.karma, u.is_moderator, u.is_admin, u.email, u.email_domain, u.created_at, u.updated_at, u.banned_at, u.ban_reason, u.deleted_at
+select n.id, n.author_id, n.body_md, n.body_html, n.code_lang, n.code_body, n.code_html, n.reply_to_id, n.root_id, n.quote_of_id, n.repost_of_id, n.reply_policy, n.like_count, n.repost_count, n.quote_count, n.reply_count, n.flag_count, n.promoted_link_id, n.preview_url, n.preview_title, n.preview_desc, n.preview_media, n.preview_domain, n.created_at, n.edited_at, n.deleted_at, n.killed_at, u.id, u.username, u.username_lower, u.display_name, u.pronouns, u.bio, u.readme_md, u.readme_html, u.role_title, u.company, u.location, u.open_to_work, u.accent, u.avatar_media, u.banner_media, u.lang, u.script, u.theme, u.karma, u.is_moderator, u.is_admin, u.email, u.email_domain, u.created_at, u.updated_at, u.banned_at, u.ban_reason, u.deleted_at
 from notes n join users u on u.id = n.author_id
 where n.id = $1 and n.deleted_at is null
 `
@@ -218,7 +217,6 @@ func (q *Queries) GetNote(ctx context.Context, id int64) (GetNoteRow, error) {
 		&i.Note.EditedAt,
 		&i.Note.DeletedAt,
 		&i.Note.KilledAt,
-		&i.Note.Search,
 		&i.User.ID,
 		&i.User.Username,
 		&i.User.UsernameLower,
@@ -252,16 +250,17 @@ func (q *Queries) GetNote(ctx context.Context, id int64) (GetNoteRow, error) {
 }
 
 const killNote = `-- name: KillNote :exec
-update notes set killed_at = case when $2::boolean then now() else null end where id = $1
+update notes set killed_at = case when $1::boolean then now() else null end
+where id = $2::bigint
 `
 
 type KillNoteParams struct {
+	Enabled bool
 	ID      int64
-	Column2 bool
 }
 
 func (q *Queries) KillNote(ctx context.Context, arg KillNoteParams) error {
-	_, err := q.db.Exec(ctx, killNote, arg.ID, arg.Column2)
+	_, err := q.db.Exec(ctx, killNote, arg.Enabled, arg.ID)
 	return err
 }
 
@@ -283,7 +282,7 @@ func (q *Queries) LikeNote(ctx context.Context, arg LikeNoteParams) (int64, erro
 }
 
 const listBookmarkedNotes = `-- name: ListBookmarkedNotes :many
-select n.id, n.author_id, n.body_md, n.body_html, n.code_lang, n.code_body, n.code_html, n.reply_to_id, n.root_id, n.quote_of_id, n.repost_of_id, n.reply_policy, n.like_count, n.repost_count, n.quote_count, n.reply_count, n.flag_count, n.promoted_link_id, n.preview_url, n.preview_title, n.preview_desc, n.preview_media, n.preview_domain, n.created_at, n.edited_at, n.deleted_at, n.killed_at, n.search, u.id, u.username, u.username_lower, u.display_name, u.pronouns, u.bio, u.readme_md, u.readme_html, u.role_title, u.company, u.location, u.open_to_work, u.accent, u.avatar_media, u.banner_media, u.lang, u.script, u.theme, u.karma, u.is_moderator, u.is_admin, u.email, u.email_domain, u.created_at, u.updated_at, u.banned_at, u.ban_reason, u.deleted_at, b.created_at as bookmarked_at
+select n.id, n.author_id, n.body_md, n.body_html, n.code_lang, n.code_body, n.code_html, n.reply_to_id, n.root_id, n.quote_of_id, n.repost_of_id, n.reply_policy, n.like_count, n.repost_count, n.quote_count, n.reply_count, n.flag_count, n.promoted_link_id, n.preview_url, n.preview_title, n.preview_desc, n.preview_media, n.preview_domain, n.created_at, n.edited_at, n.deleted_at, n.killed_at, u.id, u.username, u.username_lower, u.display_name, u.pronouns, u.bio, u.readme_md, u.readme_html, u.role_title, u.company, u.location, u.open_to_work, u.accent, u.avatar_media, u.banner_media, u.lang, u.script, u.theme, u.karma, u.is_moderator, u.is_admin, u.email, u.email_domain, u.created_at, u.updated_at, u.banned_at, u.ban_reason, u.deleted_at, b.created_at as bookmarked_at
 from note_bookmarks b
 join notes n on n.id = b.note_id
 join users u on u.id = n.author_id
@@ -350,7 +349,6 @@ func (q *Queries) ListBookmarkedNotes(ctx context.Context, arg ListBookmarkedNot
 			&i.Note.EditedAt,
 			&i.Note.DeletedAt,
 			&i.Note.KilledAt,
-			&i.Note.Search,
 			&i.User.ID,
 			&i.User.Username,
 			&i.User.UsernameLower,
@@ -453,11 +451,11 @@ func (q *Queries) ListLikesForNotes(ctx context.Context, arg ListLikesForNotesPa
 
 const listNoteAncestors = `-- name: ListNoteAncestors :many
 with recursive up as (
-  select n.id, n.author_id, n.body_md, n.body_html, n.code_lang, n.code_body, n.code_html, n.reply_to_id, n.root_id, n.quote_of_id, n.repost_of_id, n.reply_policy, n.like_count, n.repost_count, n.quote_count, n.reply_count, n.flag_count, n.promoted_link_id, n.preview_url, n.preview_title, n.preview_desc, n.preview_media, n.preview_domain, n.created_at, n.edited_at, n.deleted_at, n.killed_at, n.search from notes n where n.id = $1::bigint
+  select n.id, n.author_id, n.body_md, n.body_html, n.code_lang, n.code_body, n.code_html, n.reply_to_id, n.root_id, n.quote_of_id, n.repost_of_id, n.reply_policy, n.like_count, n.repost_count, n.quote_count, n.reply_count, n.flag_count, n.promoted_link_id, n.preview_url, n.preview_title, n.preview_desc, n.preview_media, n.preview_domain, n.created_at, n.edited_at, n.deleted_at, n.killed_at from notes n where n.id = $1::bigint
   union all
-  select parent.id, parent.author_id, parent.body_md, parent.body_html, parent.code_lang, parent.code_body, parent.code_html, parent.reply_to_id, parent.root_id, parent.quote_of_id, parent.repost_of_id, parent.reply_policy, parent.like_count, parent.repost_count, parent.quote_count, parent.reply_count, parent.flag_count, parent.promoted_link_id, parent.preview_url, parent.preview_title, parent.preview_desc, parent.preview_media, parent.preview_domain, parent.created_at, parent.edited_at, parent.deleted_at, parent.killed_at, parent.search from notes parent join up on up.reply_to_id = parent.id
+  select parent.id, parent.author_id, parent.body_md, parent.body_html, parent.code_lang, parent.code_body, parent.code_html, parent.reply_to_id, parent.root_id, parent.quote_of_id, parent.repost_of_id, parent.reply_policy, parent.like_count, parent.repost_count, parent.quote_count, parent.reply_count, parent.flag_count, parent.promoted_link_id, parent.preview_url, parent.preview_title, parent.preview_desc, parent.preview_media, parent.preview_domain, parent.created_at, parent.edited_at, parent.deleted_at, parent.killed_at from notes parent join up on up.reply_to_id = parent.id
 )
-select n.id, n.author_id, n.body_md, n.body_html, n.code_lang, n.code_body, n.code_html, n.reply_to_id, n.root_id, n.quote_of_id, n.repost_of_id, n.reply_policy, n.like_count, n.repost_count, n.quote_count, n.reply_count, n.flag_count, n.promoted_link_id, n.preview_url, n.preview_title, n.preview_desc, n.preview_media, n.preview_domain, n.created_at, n.edited_at, n.deleted_at, n.killed_at, n.search, u.id, u.username, u.username_lower, u.display_name, u.pronouns, u.bio, u.readme_md, u.readme_html, u.role_title, u.company, u.location, u.open_to_work, u.accent, u.avatar_media, u.banner_media, u.lang, u.script, u.theme, u.karma, u.is_moderator, u.is_admin, u.email, u.email_domain, u.created_at, u.updated_at, u.banned_at, u.ban_reason, u.deleted_at
+select n.id, n.author_id, n.body_md, n.body_html, n.code_lang, n.code_body, n.code_html, n.reply_to_id, n.root_id, n.quote_of_id, n.repost_of_id, n.reply_policy, n.like_count, n.repost_count, n.quote_count, n.reply_count, n.flag_count, n.promoted_link_id, n.preview_url, n.preview_title, n.preview_desc, n.preview_media, n.preview_domain, n.created_at, n.edited_at, n.deleted_at, n.killed_at, u.id, u.username, u.username_lower, u.display_name, u.pronouns, u.bio, u.readme_md, u.readme_html, u.role_title, u.company, u.location, u.open_to_work, u.accent, u.avatar_media, u.banner_media, u.lang, u.script, u.theme, u.karma, u.is_moderator, u.is_admin, u.email, u.email_domain, u.created_at, u.updated_at, u.banned_at, u.ban_reason, u.deleted_at
 from up n join users u on u.id = n.author_id
 where n.id <> $1::bigint
 order by n.created_at
@@ -505,7 +503,6 @@ func (q *Queries) ListNoteAncestors(ctx context.Context, noteID int64) ([]ListNo
 			&i.Note.EditedAt,
 			&i.Note.DeletedAt,
 			&i.Note.KilledAt,
-			&i.Note.Search,
 			&i.User.ID,
 			&i.User.Username,
 			&i.User.UsernameLower,
@@ -622,7 +619,7 @@ func (q *Queries) ListNoteMedia(ctx context.Context, ids []int64) ([]ListNoteMed
 }
 
 const listNoteReplies = `-- name: ListNoteReplies :many
-select n.id, n.author_id, n.body_md, n.body_html, n.code_lang, n.code_body, n.code_html, n.reply_to_id, n.root_id, n.quote_of_id, n.repost_of_id, n.reply_policy, n.like_count, n.repost_count, n.quote_count, n.reply_count, n.flag_count, n.promoted_link_id, n.preview_url, n.preview_title, n.preview_desc, n.preview_media, n.preview_domain, n.created_at, n.edited_at, n.deleted_at, n.killed_at, n.search, u.id, u.username, u.username_lower, u.display_name, u.pronouns, u.bio, u.readme_md, u.readme_html, u.role_title, u.company, u.location, u.open_to_work, u.accent, u.avatar_media, u.banner_media, u.lang, u.script, u.theme, u.karma, u.is_moderator, u.is_admin, u.email, u.email_domain, u.created_at, u.updated_at, u.banned_at, u.ban_reason, u.deleted_at
+select n.id, n.author_id, n.body_md, n.body_html, n.code_lang, n.code_body, n.code_html, n.reply_to_id, n.root_id, n.quote_of_id, n.repost_of_id, n.reply_policy, n.like_count, n.repost_count, n.quote_count, n.reply_count, n.flag_count, n.promoted_link_id, n.preview_url, n.preview_title, n.preview_desc, n.preview_media, n.preview_domain, n.created_at, n.edited_at, n.deleted_at, n.killed_at, u.id, u.username, u.username_lower, u.display_name, u.pronouns, u.bio, u.readme_md, u.readme_html, u.role_title, u.company, u.location, u.open_to_work, u.accent, u.avatar_media, u.banner_media, u.lang, u.script, u.theme, u.karma, u.is_moderator, u.is_admin, u.email, u.email_domain, u.created_at, u.updated_at, u.banned_at, u.ban_reason, u.deleted_at
 from notes n
 join users u on u.id = n.author_id
 where n.reply_to_id = $1::bigint
@@ -682,7 +679,6 @@ func (q *Queries) ListNoteReplies(ctx context.Context, arg ListNoteRepliesParams
 			&i.Note.EditedAt,
 			&i.Note.DeletedAt,
 			&i.Note.KilledAt,
-			&i.Note.Search,
 			&i.User.ID,
 			&i.User.Username,
 			&i.User.UsernameLower,
@@ -723,7 +719,7 @@ func (q *Queries) ListNoteReplies(ctx context.Context, arg ListNoteRepliesParams
 }
 
 const listNotes = `-- name: ListNotes :many
-select n.id, n.author_id, n.body_md, n.body_html, n.code_lang, n.code_body, n.code_html, n.reply_to_id, n.root_id, n.quote_of_id, n.repost_of_id, n.reply_policy, n.like_count, n.repost_count, n.quote_count, n.reply_count, n.flag_count, n.promoted_link_id, n.preview_url, n.preview_title, n.preview_desc, n.preview_media, n.preview_domain, n.created_at, n.edited_at, n.deleted_at, n.killed_at, n.search, u.id, u.username, u.username_lower, u.display_name, u.pronouns, u.bio, u.readme_md, u.readme_html, u.role_title, u.company, u.location, u.open_to_work, u.accent, u.avatar_media, u.banner_media, u.lang, u.script, u.theme, u.karma, u.is_moderator, u.is_admin, u.email, u.email_domain, u.created_at, u.updated_at, u.banned_at, u.ban_reason, u.deleted_at
+select n.id, n.author_id, n.body_md, n.body_html, n.code_lang, n.code_body, n.code_html, n.reply_to_id, n.root_id, n.quote_of_id, n.repost_of_id, n.reply_policy, n.like_count, n.repost_count, n.quote_count, n.reply_count, n.flag_count, n.promoted_link_id, n.preview_url, n.preview_title, n.preview_desc, n.preview_media, n.preview_domain, n.created_at, n.edited_at, n.deleted_at, n.killed_at, u.id, u.username, u.username_lower, u.display_name, u.pronouns, u.bio, u.readme_md, u.readme_html, u.role_title, u.company, u.location, u.open_to_work, u.accent, u.avatar_media, u.banner_media, u.lang, u.script, u.theme, u.karma, u.is_moderator, u.is_admin, u.email, u.email_domain, u.created_at, u.updated_at, u.banned_at, u.ban_reason, u.deleted_at
 from notes n
 join users u on u.id = n.author_id
 where n.deleted_at is null and n.killed_at is null and n.reply_to_id is null
@@ -795,7 +791,6 @@ func (q *Queries) ListNotes(ctx context.Context, arg ListNotesParams) ([]ListNot
 			&i.Note.EditedAt,
 			&i.Note.DeletedAt,
 			&i.Note.KilledAt,
-			&i.Note.Search,
 			&i.User.ID,
 			&i.User.Username,
 			&i.User.UsernameLower,
@@ -836,18 +831,24 @@ func (q *Queries) ListNotes(ctx context.Context, arg ListNotesParams) ([]ListNot
 }
 
 const listNotesByIDs = `-- name: ListNotesByIDs :many
-select n.id, n.author_id, n.body_md, n.body_html, n.code_lang, n.code_body, n.code_html, n.reply_to_id, n.root_id, n.quote_of_id, n.repost_of_id, n.reply_policy, n.like_count, n.repost_count, n.quote_count, n.reply_count, n.flag_count, n.promoted_link_id, n.preview_url, n.preview_title, n.preview_desc, n.preview_media, n.preview_domain, n.created_at, n.edited_at, n.deleted_at, n.killed_at, n.search, u.id, u.username, u.username_lower, u.display_name, u.pronouns, u.bio, u.readme_md, u.readme_html, u.role_title, u.company, u.location, u.open_to_work, u.accent, u.avatar_media, u.banner_media, u.lang, u.script, u.theme, u.karma, u.is_moderator, u.is_admin, u.email, u.email_domain, u.created_at, u.updated_at, u.banned_at, u.ban_reason, u.deleted_at
+select n.id, n.author_id, n.body_md, n.body_html, n.code_lang, n.code_body, n.code_html, n.reply_to_id, n.root_id, n.quote_of_id, n.repost_of_id, n.reply_policy, n.like_count, n.repost_count, n.quote_count, n.reply_count, n.flag_count, n.promoted_link_id, n.preview_url, n.preview_title, n.preview_desc, n.preview_media, n.preview_domain, n.created_at, n.edited_at, n.deleted_at, n.killed_at, u.id, u.username, u.username_lower, u.display_name, u.pronouns, u.bio, u.readme_md, u.readme_html, u.role_title, u.company, u.location, u.open_to_work, u.accent, u.avatar_media, u.banner_media, u.lang, u.script, u.theme, u.karma, u.is_moderator, u.is_admin, u.email, u.email_domain, u.created_at, u.updated_at, u.banned_at, u.ban_reason, u.deleted_at
 from notes n join users u on u.id = n.author_id
 where n.id = any($1::bigint[]) and n.deleted_at is null
+  and not bw_hidden($2::bigint, n.author_id)
 `
+
+type ListNotesByIDsParams struct {
+	Ids      []int64
+	ViewerID *int64
+}
 
 type ListNotesByIDsRow struct {
 	Note Note
 	User User
 }
 
-func (q *Queries) ListNotesByIDs(ctx context.Context, ids []int64) ([]ListNotesByIDsRow, error) {
-	rows, err := q.db.Query(ctx, listNotesByIDs, ids)
+func (q *Queries) ListNotesByIDs(ctx context.Context, arg ListNotesByIDsParams) ([]ListNotesByIDsRow, error) {
+	rows, err := q.db.Query(ctx, listNotesByIDs, arg.Ids, arg.ViewerID)
 	if err != nil {
 		return nil, err
 	}
@@ -883,7 +884,6 @@ func (q *Queries) ListNotesByIDs(ctx context.Context, ids []int64) ([]ListNotesB
 			&i.Note.EditedAt,
 			&i.Note.DeletedAt,
 			&i.Note.KilledAt,
-			&i.Note.Search,
 			&i.User.ID,
 			&i.User.Username,
 			&i.User.UsernameLower,
@@ -924,7 +924,7 @@ func (q *Queries) ListNotesByIDs(ctx context.Context, ids []int64) ([]ListNotesB
 }
 
 const listPopularNotes = `-- name: ListPopularNotes :many
-select n.id, n.author_id, n.body_md, n.body_html, n.code_lang, n.code_body, n.code_html, n.reply_to_id, n.root_id, n.quote_of_id, n.repost_of_id, n.reply_policy, n.like_count, n.repost_count, n.quote_count, n.reply_count, n.flag_count, n.promoted_link_id, n.preview_url, n.preview_title, n.preview_desc, n.preview_media, n.preview_domain, n.created_at, n.edited_at, n.deleted_at, n.killed_at, n.search, u.id, u.username, u.username_lower, u.display_name, u.pronouns, u.bio, u.readme_md, u.readme_html, u.role_title, u.company, u.location, u.open_to_work, u.accent, u.avatar_media, u.banner_media, u.lang, u.script, u.theme, u.karma, u.is_moderator, u.is_admin, u.email, u.email_domain, u.created_at, u.updated_at, u.banned_at, u.ban_reason, u.deleted_at
+select n.id, n.author_id, n.body_md, n.body_html, n.code_lang, n.code_body, n.code_html, n.reply_to_id, n.root_id, n.quote_of_id, n.repost_of_id, n.reply_policy, n.like_count, n.repost_count, n.quote_count, n.reply_count, n.flag_count, n.promoted_link_id, n.preview_url, n.preview_title, n.preview_desc, n.preview_media, n.preview_domain, n.created_at, n.edited_at, n.deleted_at, n.killed_at, u.id, u.username, u.username_lower, u.display_name, u.pronouns, u.bio, u.readme_md, u.readme_html, u.role_title, u.company, u.location, u.open_to_work, u.accent, u.avatar_media, u.banner_media, u.lang, u.script, u.theme, u.karma, u.is_moderator, u.is_admin, u.email, u.email_domain, u.created_at, u.updated_at, u.banned_at, u.ban_reason, u.deleted_at
 from notes n
 join users u on u.id = n.author_id
 where n.deleted_at is null and n.killed_at is null
@@ -986,7 +986,6 @@ func (q *Queries) ListPopularNotes(ctx context.Context, arg ListPopularNotesPara
 			&i.Note.EditedAt,
 			&i.Note.DeletedAt,
 			&i.Note.KilledAt,
-			&i.Note.Search,
 			&i.User.ID,
 			&i.User.Username,
 			&i.User.UsernameLower,
@@ -1161,7 +1160,7 @@ func (q *Queries) UnlikeNote(ctx context.Context, arg UnlikeNoteParams) (int64, 
 const updateNote = `-- name: UpdateNote :one
 update notes set body_md = $2, body_html = $3, edited_at = now()
 where id = $1 and deleted_at is null
-returning id, author_id, body_md, body_html, code_lang, code_body, code_html, reply_to_id, root_id, quote_of_id, repost_of_id, reply_policy, like_count, repost_count, quote_count, reply_count, flag_count, promoted_link_id, preview_url, preview_title, preview_desc, preview_media, preview_domain, created_at, edited_at, deleted_at, killed_at, search
+returning id, author_id, body_md, body_html, code_lang, code_body, code_html, reply_to_id, root_id, quote_of_id, repost_of_id, reply_policy, like_count, repost_count, quote_count, reply_count, flag_count, promoted_link_id, preview_url, preview_title, preview_desc, preview_media, preview_domain, created_at, edited_at, deleted_at, killed_at
 `
 
 type UpdateNoteParams struct {
@@ -1201,7 +1200,6 @@ func (q *Queries) UpdateNote(ctx context.Context, arg UpdateNoteParams) (Note, e
 		&i.EditedAt,
 		&i.DeletedAt,
 		&i.KilledAt,
-		&i.Search,
 	)
 	return i, err
 }

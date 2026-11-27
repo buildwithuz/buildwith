@@ -18,7 +18,8 @@ returning *;
 update notes set deleted_at = now() where id = $1 and deleted_at is null;
 
 -- name: KillNote :exec
-update notes set killed_at = case when $2::boolean then now() else null end where id = $1;
+update notes set killed_at = case when sqlc.arg(enabled)::boolean then now() else null end
+where id = sqlc.arg(id)::bigint;
 
 -- name: SetNotePreview :exec
 update notes set preview_url = $2, preview_title = $3, preview_desc = $4,
@@ -140,7 +141,8 @@ limit sqlc.arg(page_limit)::int;
 -- name: ListNotesByIDs :many
 select sqlc.embed(n), sqlc.embed(u)
 from notes n join users u on u.id = n.author_id
-where n.id = any(sqlc.arg(ids)::bigint[]) and n.deleted_at is null;
+where n.id = any(sqlc.arg(ids)::bigint[]) and n.deleted_at is null
+  and not bw_hidden(sqlc.narg(viewer_id)::bigint, n.author_id);
 
 -- name: CountAuthorNotesSince :one
 select count(*)::int as count from notes

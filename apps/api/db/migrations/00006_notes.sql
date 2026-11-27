@@ -28,7 +28,6 @@ create table notes (
   edited_at     timestamptz,
   deleted_at    timestamptz,
   killed_at     timestamptz,
-  search        tsvector    generated always as (to_tsvector('simple', body_md)) stored,
   constraint notes_repost_is_empty check (repost_of_id is null or (body_md = '' and code_body = '')),
   constraint notes_not_empty check (
     repost_of_id is not null or quote_of_id is not null
@@ -45,7 +44,6 @@ create index notes_repost_of_id_idx on notes (repost_of_id) where repost_of_id i
 create index notes_quote_of_id_idx on notes (quote_of_id) where quote_of_id is not null;
 create index notes_popular_idx on notes ((like_count + repost_count) desc, id desc)
   where deleted_at is null and killed_at is null and reply_to_id is null and repost_of_id is null;
-create index notes_search_idx on notes using gin (search);
 
 create table note_media (
   id       bigint generated always as identity primary key,

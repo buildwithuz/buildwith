@@ -15,14 +15,12 @@ create table comments (
   created_at   timestamptz not null default now(),
   edited_at    timestamptz,
   deleted_at   timestamptz,
-  killed_at    timestamptz,
-  search       tsvector    generated always as (to_tsvector('simple', body_md)) stored
+  killed_at    timestamptz
 );
 
 create index comments_subject_idx on comments (subject_type, subject_id, path, created_at);
 create index comments_author_id_idx on comments (author_id, created_at desc);
 create index comments_parent_id_idx on comments (parent_id);
-create index comments_search_idx on comments using gin (search);
 
 create table votes (
   subject_type text        not null check (subject_type in ('link','article','comment')),

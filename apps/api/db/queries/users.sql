@@ -153,3 +153,42 @@ select * from telegram_accounts where chat_id = $1;
 
 -- name: SetTelegramNotify :exec
 update telegram_accounts set notify = $2 where user_id = $1;
+
+-- Everything personal goes; authored content stays, attributed to the
+-- anonymized row, so threads keep their shape.
+-- name: DeletePersonalData :exec
+with
+  ids  as (delete from user_identities where user_id = sqlc.arg(user_id)::bigint),
+  ses  as (delete from sessions        where user_id = sqlc.arg(user_id)::bigint),
+  tg   as (delete from telegram_accounts where user_id = sqlc.arg(user_id)::bigint),
+  lnk  as (delete from user_links      where user_id = sqlc.arg(user_id)::bigint),
+  stk  as (delete from user_stack      where user_id = sqlc.arg(user_id)::bigint),
+  rep  as (delete from user_repos      where user_id = sqlc.arg(user_id)::bigint),
+  bdg  as (delete from user_badges     where user_id = sqlc.arg(user_id)::bigint),
+  fol  as (delete from follows where follower_id = sqlc.arg(user_id)::bigint or followee_id = sqlc.arg(user_id)::bigint),
+  tf   as (delete from tag_follows     where user_id = sqlc.arg(user_id)::bigint),
+  blk  as (delete from blocks where blocker_id = sqlc.arg(user_id)::bigint or blocked_id = sqlc.arg(user_id)::bigint),
+  mut  as (delete from mutes  where muter_id = sqlc.arg(user_id)::bigint or muted_id = sqlc.arg(user_id)::bigint),
+  mw   as (delete from muted_words     where user_id = sqlc.arg(user_id)::bigint),
+  bm   as (delete from note_bookmarks  where user_id = sqlc.arg(user_id)::bigint),
+  nt   as (delete from notifications where user_id = sqlc.arg(user_id)::bigint or actor_id = sqlc.arg(user_id)::bigint)
+select 1;
+
+-- name: ExportLinks :many
+select id, kind, title, url, body_md, points, created_at from links
+where author_id = $1 and deleted_at is null order by created_at;
+
+-- name: ExportNotes :many
+select id, body_md, code_lang, code_body, reply_to_id, quote_of_id, repost_of_id, created_at from notes
+where author_id = $1 and deleted_at is null order by created_at;
+
+-- name: ExportArticles :many
+select id, slug, title, subtitle, body_md, status, published_at, created_at from articles
+where author_id = $1 and deleted_at is null order by created_at;
+
+-- name: ExportComments :many
+select id, subject_type, subject_id, parent_id, body_md, created_at from comments
+where author_id = $1 and deleted_at is null order by created_at;
+
+-- name: GetIdentity :one
+select * from user_identities where user_id = $1 and provider = $2;

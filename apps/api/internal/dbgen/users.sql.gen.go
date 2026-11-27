@@ -7,8 +7,7 @@ package dbgen
 
 import (
 	"context"
-
-	"github.com/jackc/pgx/v5/pgtype"
+	"time"
 )
 
 const activityHeatmap = `-- name: ActivityHeatmap :many
@@ -37,7 +36,7 @@ group by day order by day
 `
 
 type ActivityHeatmapRow struct {
-	Day   pgtype.Date
+	Day   time.Time
 	Count int32
 }
 
@@ -206,6 +205,229 @@ func (q *Queries) CountUserContent(ctx context.Context, userID int64) (CountUser
 		&i.Comments,
 		&i.Followers,
 		&i.Following,
+	)
+	return i, err
+}
+
+const deletePersonalData = `-- name: DeletePersonalData :exec
+with
+  ids  as (delete from user_identities where user_id = $1::bigint),
+  ses  as (delete from sessions        where user_id = $1::bigint),
+  tg   as (delete from telegram_accounts where user_id = $1::bigint),
+  lnk  as (delete from user_links      where user_id = $1::bigint),
+  stk  as (delete from user_stack      where user_id = $1::bigint),
+  rep  as (delete from user_repos      where user_id = $1::bigint),
+  bdg  as (delete from user_badges     where user_id = $1::bigint),
+  fol  as (delete from follows where follower_id = $1::bigint or followee_id = $1::bigint),
+  tf   as (delete from tag_follows     where user_id = $1::bigint),
+  blk  as (delete from blocks where blocker_id = $1::bigint or blocked_id = $1::bigint),
+  mut  as (delete from mutes  where muter_id = $1::bigint or muted_id = $1::bigint),
+  mw   as (delete from muted_words     where user_id = $1::bigint),
+  bm   as (delete from note_bookmarks  where user_id = $1::bigint),
+  nt   as (delete from notifications where user_id = $1::bigint or actor_id = $1::bigint)
+select 1
+`
+
+// Everything personal goes; authored content stays, attributed to the
+// anonymized row, so threads keep their shape.
+func (q *Queries) DeletePersonalData(ctx context.Context, userID int64) error {
+	_, err := q.db.Exec(ctx, deletePersonalData, userID)
+	return err
+}
+
+const exportArticles = `-- name: ExportArticles :many
+select id, slug, title, subtitle, body_md, status, published_at, created_at from articles
+where author_id = $1 and deleted_at is null order by created_at
+`
+
+type ExportArticlesRow struct {
+	ID          int64
+	Slug        string
+	Title       string
+	Subtitle    string
+	BodyMd      string
+	Status      string
+	PublishedAt *time.Time
+	CreatedAt   time.Time
+}
+
+func (q *Queries) ExportArticles(ctx context.Context, authorID int64) ([]ExportArticlesRow, error) {
+	rows, err := q.db.Query(ctx, exportArticles, authorID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ExportArticlesRow{}
+	for rows.Next() {
+		var i ExportArticlesRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Slug,
+			&i.Title,
+			&i.Subtitle,
+			&i.BodyMd,
+			&i.Status,
+			&i.PublishedAt,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const exportComments = `-- name: ExportComments :many
+select id, subject_type, subject_id, parent_id, body_md, created_at from comments
+where author_id = $1 and deleted_at is null order by created_at
+`
+
+type ExportCommentsRow struct {
+	ID          int64
+	SubjectType string
+	SubjectID   int64
+	ParentID    *int64
+	BodyMd      string
+	CreatedAt   time.Time
+}
+
+func (q *Queries) ExportComments(ctx context.Context, authorID int64) ([]ExportCommentsRow, error) {
+	rows, err := q.db.Query(ctx, exportComments, authorID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ExportCommentsRow{}
+	for rows.Next() {
+		var i ExportCommentsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.SubjectType,
+			&i.SubjectID,
+			&i.ParentID,
+			&i.BodyMd,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const exportLinks = `-- name: ExportLinks :many
+select id, kind, title, url, body_md, points, created_at from links
+where author_id = $1 and deleted_at is null order by created_at
+`
+
+type ExportLinksRow struct {
+	ID        int64
+	Kind      string
+	Title     string
+	Url       *string
+	BodyMd    string
+	Points    int32
+	CreatedAt time.Time
+}
+
+func (q *Queries) ExportLinks(ctx context.Context, authorID int64) ([]ExportLinksRow, error) {
+	rows, err := q.db.Query(ctx, exportLinks, authorID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ExportLinksRow{}
+	for rows.Next() {
+		var i ExportLinksRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Kind,
+			&i.Title,
+			&i.Url,
+			&i.BodyMd,
+			&i.Points,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const exportNotes = `-- name: ExportNotes :many
+select id, body_md, code_lang, code_body, reply_to_id, quote_of_id, repost_of_id, created_at from notes
+where author_id = $1 and deleted_at is null order by created_at
+`
+
+type ExportNotesRow struct {
+	ID         int64
+	BodyMd     string
+	CodeLang   string
+	CodeBody   string
+	ReplyToID  *int64
+	QuoteOfID  *int64
+	RepostOfID *int64
+	CreatedAt  time.Time
+}
+
+func (q *Queries) ExportNotes(ctx context.Context, authorID int64) ([]ExportNotesRow, error) {
+	rows, err := q.db.Query(ctx, exportNotes, authorID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ExportNotesRow{}
+	for rows.Next() {
+		var i ExportNotesRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.BodyMd,
+			&i.CodeLang,
+			&i.CodeBody,
+			&i.ReplyToID,
+			&i.QuoteOfID,
+			&i.RepostOfID,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getIdentity = `-- name: GetIdentity :one
+select id, user_id, provider, subject, handle, created_at from user_identities where user_id = $1 and provider = $2
+`
+
+type GetIdentityParams struct {
+	UserID   int64
+	Provider string
+}
+
+func (q *Queries) GetIdentity(ctx context.Context, arg GetIdentityParams) (UserIdentity, error) {
+	row := q.db.QueryRow(ctx, getIdentity, arg.UserID, arg.Provider)
+	var i UserIdentity
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.Provider,
+		&i.Subject,
+		&i.Handle,
+		&i.CreatedAt,
 	)
 	return i, err
 }

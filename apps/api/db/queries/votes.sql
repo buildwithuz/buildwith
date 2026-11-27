@@ -43,3 +43,19 @@ update users set karma = greatest(0, (
 )::int)
 where users.id = sqlc.arg(user_id)::bigint
 returning karma;
+
+-- Everything a vote or flag needs to know about its target, in one round trip.
+-- name: GetVoteTarget :one
+select
+  coalesce(case sqlc.arg(subject_type)::text
+    when 'link'    then (select author_id from links    where id = sqlc.arg(subject_id)::bigint and deleted_at is null)
+    when 'article' then (select author_id from articles where id = sqlc.arg(subject_id)::bigint and deleted_at is null
+                                                          and status = 'published')
+    when 'comment' then (select author_id from comments where id = sqlc.arg(subject_id)::bigint and deleted_at is null)
+    when 'note'    then (select author_id from notes    where id = sqlc.arg(subject_id)::bigint and deleted_at is null)
+  end, 0)::bigint as author_id,
+  coalesce(case sqlc.arg(subject_type)::text
+    when 'link'    then (select points from links    where id = sqlc.arg(subject_id)::bigint)
+    when 'article' then (select points from articles where id = sqlc.arg(subject_id)::bigint)
+    when 'comment' then (select points from comments where id = sqlc.arg(subject_id)::bigint)
+  end, 0)::int as points;

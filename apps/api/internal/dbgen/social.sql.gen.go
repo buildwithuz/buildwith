@@ -107,7 +107,7 @@ func (q *Queries) FollowingForUsers(ctx context.Context, arg FollowingForUsersPa
 }
 
 const isBlocked = `-- name: IsBlocked :one
-select bw_blocked($1, $2) as blocked
+select bw_blocked($1::bigint, $2::bigint) as blocked
 `
 
 type IsBlockedParams struct {
@@ -536,6 +536,23 @@ func (q *Queries) RelationTo(ctx context.Context, arg RelationToParams) (Relatio
 		&i.Muting,
 	)
 	return i, err
+}
+
+const removeFollowsBetween = `-- name: RemoveFollowsBetween :exec
+delete from follows
+where (follower_id = $1::bigint and followee_id = $2::bigint)
+   or (follower_id = $2::bigint and followee_id = $1::bigint)
+`
+
+type RemoveFollowsBetweenParams struct {
+	A int64
+	B int64
+}
+
+// A block also ends any follow in either direction.
+func (q *Queries) RemoveFollowsBetween(ctx context.Context, arg RemoveFollowsBetweenParams) error {
+	_, err := q.db.Exec(ctx, removeFollowsBetween, arg.A, arg.B)
+	return err
 }
 
 const removeMutedWord = `-- name: RemoveMutedWord :execrows

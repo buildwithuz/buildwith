@@ -43,11 +43,12 @@ returning *;
 update comments set deleted_at = now() where id = $1 and deleted_at is null;
 
 -- name: KillComment :exec
-update comments set killed_at = case when $2::boolean then now() else null end where id = $1;
+update comments set killed_at = case when sqlc.arg(enabled)::boolean then now() else null end
+where id = sqlc.arg(id)::bigint;
 
 -- A reply may come at most once every cooldown window, which grows with depth.
 -- name: LastCommentAt :one
-select max(created_at)::timestamptz as last_at from comments where author_id = $1;
+select coalesce(max(created_at), 'epoch')::timestamptz as last_at from comments where author_id = $1;
 
 -- name: CountAuthorCommentsSince :one
 select count(*)::int as count from comments
@@ -60,3 +61,13 @@ select case sqlc.arg(subject_type)::text
          when 'comment' then (select author_id from comments where id = sqlc.arg(subject_id)::bigint)
          when 'note'    then (select author_id from notes    where id = sqlc.arg(subject_id)::bigint)
        end::bigint as author_id;
+
+-- What a new comment needs to check about the thing it is attached to.
+-- name: GetCommentTarget :one
+select
+  coalesce(case sqlc.arg(subject_type)::text
+    when 'link'    then (select author_id from links where id = sqlc.arg(subject_id)::bigint
+                         and deleted_at is null and killed_at is null)
+    when 'article' then (select author_id from articles where id = sqlc.arg(subject_id)::bigint
+                         and deleted_at is null and killed_at is null and status = 'published')
+  end, 0)::bigint as author_id;

@@ -765,10 +765,13 @@ paths:
       parameters:
         - { name: subject_type, in: query, required: true, schema: { $ref: "#/components/schemas/CommentSubject" } }
         - { name: subject_id, in: query, required: true, schema: { type: integer, format: int64 } }
+        - { name: sort, in: query, schema: { $ref: "#/components/schemas/CommentSort" } }
         - $ref: "#/components/parameters/Limit"
       responses:
         "200":
-          description: Comments in thread order; nest them by `depth`.
+          description: |
+            Comments in thread order; nest them by `depth`. With `best` (the default),
+            siblings are ordered by points so the most useful answer comes first.
           content:
             application/json:
               schema:
@@ -1877,6 +1880,7 @@ components:
     ArticleSort: { type: string, enum: [latest, popular, featured], default: latest }
     ArticleStatus: { type: string, enum: [draft, scheduled, published] }
     CommentSubject: { type: string, enum: [link, article] }
+    CommentSort: { type: string, enum: [best, new], default: best }
     VoteSubject: { type: string, enum: [link, article, comment] }
     FlagSubject: { type: string, enum: [link, article, comment, note] }
     ReportSubject: { type: string, enum: [link, article, comment, note, user] }
@@ -2038,7 +2042,7 @@ components:
         title: { type: string, minLength: 3, maxLength: 100 }
         url: { type: [string, "null"], maxLength: 2000 }
         body_md: { type: string, maxLength: 20000 }
-        tags: { type: array, minItems: 1, maxItems: 3, items: { type: string, maxLength: 30 } }
+        tags: { type: array, maxItems: 3, items: { type: string, maxLength: 30 } }
 
     Link:
       type: object

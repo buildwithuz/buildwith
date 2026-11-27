@@ -88,7 +88,7 @@ delete from muted_words where user_id = $1 and id = $2;
 select * from muted_words where user_id = $1 order by word;
 
 -- name: IsBlocked :one
-select bw_blocked($1, $2) as blocked;
+select bw_blocked(sqlc.arg(a)::bigint, sqlc.arg(b)::bigint) as blocked;
 
 -- name: RelationTo :one
 select
@@ -96,3 +96,9 @@ select
   exists (select 1 from follows where follower_id = @other_id::bigint and followee_id = @viewer_id::bigint) as followed_by,
   exists (select 1 from blocks  where blocker_id  = @viewer_id::bigint and blocked_id  = @other_id::bigint) as blocking,
   exists (select 1 from mutes   where muter_id    = @viewer_id::bigint and muted_id    = @other_id::bigint) as muting;
+
+-- A block also ends any follow in either direction.
+-- name: RemoveFollowsBetween :exec
+delete from follows
+where (follower_id = sqlc.arg(a)::bigint and followee_id = sqlc.arg(b)::bigint)
+   or (follower_id = sqlc.arg(b)::bigint and followee_id = sqlc.arg(a)::bigint);

@@ -21,11 +21,12 @@ create table links (
   edited_at     timestamptz,
   deleted_at    timestamptz,
   killed_at     timestamptz,
-  search        tsvector    generated always as (
-                  to_tsvector('simple', title || ' ' || coalesce(domain,'') || ' ' || body_md)
-                ) stored,
-  constraint links_url_required check ((kind = 'link') = (url is not null)),
-  constraint links_show_url check (kind <> 'show' or url is not null or char_length(body_md) > 0)
+  -- link posts need a URL, text and Savol posts have none, Koʻrsat may have either.
+  constraint links_url_by_kind check (
+    (kind = 'link' and url is not null)
+    or (kind in ('text', 'ask') and url is null)
+    or (kind = 'show' and (url is not null or char_length(body_md) > 0))
+  )
 );
 
 create index links_created_at_idx on links (created_at desc, id desc)
@@ -39,7 +40,6 @@ create index links_kind_created_at_idx on links (kind, created_at desc, id desc)
   where deleted_at is null and killed_at is null;
 create index links_domain_idx on links (domain, created_at desc) where deleted_at is null;
 create index links_url_hash_idx on links (url_hash, created_at desc) where url_hash is not null and deleted_at is null;
-create index links_search_idx on links using gin (search);
 
 create table link_tags (
   link_id bigint not null references links (id) on delete cascade,

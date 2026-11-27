@@ -13,43 +13,44 @@ import (
 const searchAll = `-- name: SearchAll :many
 select kind, id, created_at, rank from (
   select 'link'::text as kind, l.id, l.created_at,
-         ts_rank(l.search, websearch_to_tsquery('simple', $1::text)) as rank
+         ts_rank(bw_tsv(l.title || ' ' || l.domain || ' ' || l.body_md), bw_tsq($1::text, $2::text)) as rank
   from links l
-  where l.search @@ websearch_to_tsquery('simple', $1::text)
+  where bw_tsv(l.title || ' ' || l.domain || ' ' || l.body_md) @@ bw_tsq($1::text, $2::text)
     and l.deleted_at is null and l.killed_at is null
-    and not bw_hidden($2::bigint, l.author_id)
+    and not bw_hidden($3::bigint, l.author_id)
 
   union all
   select 'article', a.id, a.published_at,
-         ts_rank(a.search, websearch_to_tsquery('simple', $1::text))
+         ts_rank(bw_tsv(a.title || ' ' || a.subtitle || ' ' || a.body_md), bw_tsq($1::text, $2::text))
   from articles a
-  where a.search @@ websearch_to_tsquery('simple', $1::text)
+  where bw_tsv(a.title || ' ' || a.subtitle || ' ' || a.body_md) @@ bw_tsq($1::text, $2::text)
     and a.status = 'published' and a.deleted_at is null and a.killed_at is null
-    and not bw_hidden($2::bigint, a.author_id)
+    and not bw_hidden($3::bigint, a.author_id)
 
   union all
   select 'note', n.id, n.created_at,
-         ts_rank(n.search, websearch_to_tsquery('simple', $1::text))
+         ts_rank(bw_tsv(n.body_md), bw_tsq($1::text, $2::text))
   from notes n
-  where n.search @@ websearch_to_tsquery('simple', $1::text)
+  where bw_tsv(n.body_md) @@ bw_tsq($1::text, $2::text)
     and n.deleted_at is null and n.killed_at is null
-    and not bw_hidden($2::bigint, n.author_id)
+    and not bw_hidden($3::bigint, n.author_id)
 
   union all
   select 'comment', c.id, c.created_at,
-         ts_rank(c.search, websearch_to_tsquery('simple', $1::text))
+         ts_rank(bw_tsv(c.body_md), bw_tsq($1::text, $2::text))
   from comments c
-  where c.search @@ websearch_to_tsquery('simple', $1::text)
+  where bw_tsv(c.body_md) @@ bw_tsq($1::text, $2::text)
     and c.deleted_at is null and c.killed_at is null
-    and not bw_hidden($2::bigint, c.author_id)
+    and not bw_hidden($3::bigint, c.author_id)
 ) hits
-where ($3::text is null or kind = $3::text)
+where ($4::text is null or kind = $4::text)
 order by rank desc, created_at desc
-limit $5::int offset $4::int
+limit $6::int offset $5::int
 `
 
 type SearchAllParams struct {
 	Q          string
+	QCyrl      string
 	ViewerID   *int64
 	Kind       *string
 	PageOffset int32
@@ -64,10 +65,12 @@ type SearchAllRow struct {
 }
 
 // Full-text search over everything, on the `simple` config so Uzbek, Russian and
-// English all behave the same. Queries arrive already normalized by translit.ForSearch.
+// English all behave the same. The query comes in both scripts (q and q_cyrl) so
+// it matches posts written in either.
 func (q *Queries) SearchAll(ctx context.Context, arg SearchAllParams) ([]SearchAllRow, error) {
 	rows, err := q.db.Query(ctx, searchAll,
 		arg.Q,
+		arg.QCyrl,
 		arg.ViewerID,
 		arg.Kind,
 		arg.PageOffset,
