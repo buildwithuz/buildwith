@@ -10,6 +10,7 @@ import (
 
 	"github.com/buildwithuz/buildwith/apps/api/internal/api"
 	"github.com/buildwithuz/buildwith/apps/api/internal/app"
+	"github.com/buildwithuz/buildwith/apps/api/internal/cursor"
 	"github.com/buildwithuz/buildwith/apps/api/internal/dbgen"
 	"github.com/buildwithuz/buildwith/apps/api/internal/httpx"
 	"github.com/buildwithuz/buildwith/apps/api/internal/links"
@@ -201,4 +202,48 @@ func (h *Comments) DeleteComment(ctx context.Context, req api.DeleteCommentReque
 	}
 	_, err = h.A.Q.SoftDeleteComment(ctx, req.Id)
 	return api.DeleteComment204Response{}, err
+}
+
+func (h *Comments) GetComment(ctx context.Context, req api.GetCommentRequestObject) (api.GetCommentResponseObject, error) {
+	row, err := h.A.Q.GetComment(ctx, req.Id)
+	if err != nil {
+		return nil, httpx.NotFoundIfNoRows(err, "comment")
+	}
+	if err := links.Visible(ctx, h.A.Q, "comment", row.Comment.ID, row.Comment.AuthorID); err != nil {
+		return nil, err
+	}
+	out, err := present.New(h.A.Q, httpx.Viewer(ctx)).CommentOne(ctx, row.Comment, row.User)
+	return api.GetComment200JSONResponse(out), err
+}
+
+func (h *Comments) ListUserComments(ctx context.Context, req api.ListUserCommentsRequestObject) (api.ListUserCommentsResponseObject, error) {
+	u, err := h.A.Q.GetUserByUsername(ctx, strings.TrimPrefix(req.Username, "@"))
+	if err != nil {
+		return nil, httpx.NotFoundIfNoRows(err, "user")
+	}
+	pos, err := cursor.Decode(req.Params.Cursor)
+	if err != nil {
+		return nil, httpx.Invalid("cursor", err.Error())
+	}
+	limit := cursor.Limit(req.Params.Limit, 30)
+	arg := dbgen.ListCommentsByAuthorParams{AuthorID: u.ID, ViewerID: httpx.ViewerID(ctx), PageLimit: limit}
+	if pos != nil {
+		arg.CursorCreated, arg.CursorID = pos.T, &pos.ID
+	}
+	rows, err := h.A.Q.ListCommentsByAuthor(ctx, arg)
+	if err != nil {
+		return nil, err
+	}
+	in := make([]dbgen.ListCommentsForSubjectRow, len(rows))
+	for i, r := range rows {
+		in[i] = dbgen.ListCommentsForSubjectRow{Comment: r.Comment, User: r.User}
+	}
+	items, err := present.New(h.A.Q, httpx.Viewer(ctx)).Comments(ctx, in)
+	if err != nil {
+		return nil, err
+	}
+	next := cursor.Next(rows, limit, func(r dbgen.ListCommentsByAuthorRow) *string {
+		return cursor.ByTime(r.Comment.CreatedAt, r.Comment.ID)
+	})
+	return api.ListUserComments200JSONResponse{Items: items, NextCursor: next}, nil
 }

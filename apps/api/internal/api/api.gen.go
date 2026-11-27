@@ -807,16 +807,18 @@ type Comment struct {
 	CanEdit  *bool   `json:"can_edit,omitempty"`
 
 	// Collapsed True when a mute or a muted word applies; render it folded, not removed.
-	Collapsed  *bool      `json:"collapsed,omitempty"`
-	CreatedAt  time.Time  `json:"created_at"`
-	Deleted    *bool      `json:"deleted,omitempty"`
-	Depth      int        `json:"depth"`
-	EditedAt   *time.Time `json:"edited_at"`
-	Id         int64      `json:"id"`
-	Killed     *bool      `json:"killed,omitempty"`
-	ParentId   *int64     `json:"parent_id"`
-	Points     int        `json:"points"`
-	ViewerVote VoteValue  `json:"viewer_vote"`
+	Collapsed   *bool          `json:"collapsed,omitempty"`
+	CreatedAt   time.Time      `json:"created_at"`
+	Deleted     *bool          `json:"deleted,omitempty"`
+	Depth       int            `json:"depth"`
+	EditedAt    *time.Time     `json:"edited_at"`
+	Id          int64          `json:"id"`
+	Killed      *bool          `json:"killed,omitempty"`
+	ParentId    *int64         `json:"parent_id"`
+	Points      int            `json:"points"`
+	SubjectId   int64          `json:"subject_id"`
+	SubjectType CommentSubject `json:"subject_type"`
+	ViewerVote  VoteValue      `json:"viewer_vote"`
 }
 
 // CommentSort defines model for CommentSort.
@@ -1610,6 +1612,13 @@ type UpdateReadmeJSONBody struct {
 	BodyMd string `json:"body_md"`
 }
 
+// ListUserCommentsParams defines parameters for ListUserComments.
+type ListUserCommentsParams struct {
+	// Cursor The `nextCursor` from the previous page. Opaque; do not construct one.
+	Cursor *Cursor `form:"cursor,omitempty" json:"cursor,omitempty"`
+	Limit  *Limit  `form:"limit,omitempty" json:"limit,omitempty"`
+}
+
 // ListFollowersParams defines parameters for ListFollowers.
 type ListFollowersParams struct {
 	// Cursor The `nextCursor` from the previous page. Opaque; do not construct one.
@@ -1800,6 +1809,9 @@ type ServerInterface interface {
 	// DeleteComment Delete your own comment
 	// (DELETE /comments/{id})
 	DeleteComment(w http.ResponseWriter, r *http.Request, id ID)
+	// GetComment One comment, with the post it belongs to
+	// (GET /comments/{id})
+	GetComment(w http.ResponseWriter, r *http.Request, id ID)
 	// UpdateComment Edit your own comment (within the edit window)
 	// (PATCH /comments/{id})
 	UpdateComment(w http.ResponseWriter, r *http.Request, id ID)
@@ -1998,6 +2010,9 @@ type ServerInterface interface {
 	// BlockUser Block a user
 	// (POST /users/{username}/block)
 	BlockUser(w http.ResponseWriter, r *http.Request, username Username)
+	// ListUserComments Comments and answers a user wrote, newest first
+	// (GET /users/{username}/comments)
+	ListUserComments(w http.ResponseWriter, r *http.Request, username Username, params ListUserCommentsParams)
 	// UnfollowUser Unfollow a user
 	// (DELETE /users/{username}/follow)
 	UnfollowUser(w http.ResponseWriter, r *http.Request, username Username)
@@ -2704,6 +2719,32 @@ func (siw *ServerInterfaceWrapper) DeleteComment(w http.ResponseWriter, r *http.
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.DeleteComment(w, r, id)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetComment operation middleware
+func (siw *ServerInterfaceWrapper) GetComment(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id ID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", r.PathValue("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "int64", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetComment(w, r, id)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -4447,6 +4488,61 @@ func (siw *ServerInterfaceWrapper) BlockUser(w http.ResponseWriter, r *http.Requ
 	handler.ServeHTTP(w, r)
 }
 
+// ListUserComments operation middleware
+func (siw *ServerInterfaceWrapper) ListUserComments(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "username" -------------
+	var username Username
+
+	err = runtime.BindStyledParameterWithOptions("simple", "username", r.PathValue("username"), &username, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "username", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListUserCommentsParams
+
+	// ------------- Optional query parameter "cursor" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "cursor", r.URL.Query(), &params.Cursor, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "cursor"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "cursor", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "limit" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "limit", r.URL.Query(), &params.Limit, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "limit"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "limit", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListUserComments(w, r, username, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // UnfollowUser operation middleware
 func (siw *ServerInterfaceWrapper) UnfollowUser(w http.ResponseWriter, r *http.Request) {
 
@@ -4918,6 +5014,7 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/users/me/repos/refresh", wrapper.RefreshRepos)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/users/me/export", wrapper.ExportMe)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/users/{username}/heatmap", wrapper.GetHeatmap)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/users/{username}/comments", wrapper.ListUserComments)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/users/{username}/followers", wrapper.ListFollowers)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/users/{username}/following", wrapper.ListFollowing)
 	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/users/{username}/follow", wrapper.UnfollowUser)
@@ -4945,6 +5042,7 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/comments", wrapper.ListComments)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/comments", wrapper.CreateComment)
 	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/comments/{id}", wrapper.DeleteComment)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/comments/{id}", wrapper.GetComment)
 	m.HandleFunc(http.MethodPatch+" "+options.BaseURL+"/comments/{id}", wrapper.UpdateComment)
 	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/votes", wrapper.ClearVote)
 	m.HandleFunc(http.MethodPut+" "+options.BaseURL+"/votes", wrapper.CastVote)
@@ -6043,6 +6141,42 @@ func (response DeleteComment403JSONResponse) VisitDeleteCommentResponse(w http.R
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetCommentRequestObject struct {
+	Id ID `json:"id"`
+}
+
+type GetCommentResponseObject interface {
+	VisitGetCommentResponse(w http.ResponseWriter) error
+}
+
+type GetComment200JSONResponse Comment
+
+func (response GetComment200JSONResponse) VisitGetCommentResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := runtime.JSONMarshalWrite(&buf, response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetComment404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response GetComment404JSONResponse) VisitGetCommentResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := runtime.JSONMarshalWrite(&buf, response.NotFoundJSONResponse); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -8772,6 +8906,46 @@ func (response BlockUser401JSONResponse) VisitBlockUserResponse(w http.ResponseW
 	return err
 }
 
+type ListUserCommentsRequestObject struct {
+	Username Username `json:"username"`
+	Params   ListUserCommentsParams
+}
+
+type ListUserCommentsResponseObject interface {
+	VisitListUserCommentsResponse(w http.ResponseWriter) error
+}
+
+type ListUserComments200JSONResponse struct {
+	Items      []Comment `json:"items"`
+	NextCursor *string   `json:"nextCursor"`
+}
+
+func (response ListUserComments200JSONResponse) VisitListUserCommentsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := runtime.JSONMarshalWrite(&buf, response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListUserComments404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response ListUserComments404JSONResponse) VisitListUserCommentsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := runtime.JSONMarshalWrite(&buf, response.NotFoundJSONResponse); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type UnfollowUserRequestObject struct {
 	Username Username `json:"username"`
 }
@@ -9248,6 +9422,9 @@ type StrictServerInterface interface {
 	// DeleteComment Delete your own comment
 	// (DELETE /comments/{id})
 	DeleteComment(ctx context.Context, request DeleteCommentRequestObject) (DeleteCommentResponseObject, error)
+	// GetComment One comment, with the post it belongs to
+	// (GET /comments/{id})
+	GetComment(ctx context.Context, request GetCommentRequestObject) (GetCommentResponseObject, error)
 	// UpdateComment Edit your own comment (within the edit window)
 	// (PATCH /comments/{id})
 	UpdateComment(ctx context.Context, request UpdateCommentRequestObject) (UpdateCommentResponseObject, error)
@@ -9446,6 +9623,9 @@ type StrictServerInterface interface {
 	// BlockUser Block a user
 	// (POST /users/{username}/block)
 	BlockUser(ctx context.Context, request BlockUserRequestObject) (BlockUserResponseObject, error)
+	// ListUserComments Comments and answers a user wrote, newest first
+	// (GET /users/{username}/comments)
+	ListUserComments(ctx context.Context, request ListUserCommentsRequestObject) (ListUserCommentsResponseObject, error)
 	// UnfollowUser Unfollow a user
 	// (DELETE /users/{username}/follow)
 	UnfollowUser(ctx context.Context, request UnfollowUserRequestObject) (UnfollowUserResponseObject, error)
@@ -10100,6 +10280,32 @@ func (sh *strictHandler) DeleteComment(w http.ResponseWriter, r *http.Request, i
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(DeleteCommentResponseObject); ok {
 		if err := validResponse.VisitDeleteCommentResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetComment operation middleware
+func (sh *strictHandler) GetComment(w http.ResponseWriter, r *http.Request, id ID) {
+	var request GetCommentRequestObject
+
+	request.Id = id
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request any) (any, error) {
+		return sh.ssi.GetComment(ctx, request.(GetCommentRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetComment")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetCommentResponseObject); ok {
+		if err := validResponse.VisitGetCommentResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {
@@ -11927,6 +12133,33 @@ func (sh *strictHandler) BlockUser(w http.ResponseWriter, r *http.Request, usern
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(BlockUserResponseObject); ok {
 		if err := validResponse.VisitBlockUserResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ListUserComments operation middleware
+func (sh *strictHandler) ListUserComments(w http.ResponseWriter, r *http.Request, username Username, params ListUserCommentsParams) {
+	var request ListUserCommentsRequestObject
+
+	request.Username = username
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request any) (any, error) {
+		return sh.ssi.ListUserComments(ctx, request.(ListUserCommentsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListUserComments")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ListUserCommentsResponseObject); ok {
+		if err := validResponse.VisitListUserCommentsResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

@@ -1,0 +1,232 @@
+/*
+ * Tailwind v4 theme built on the tokens. Import once from the app's CSS:
+ *   @import "tailwindcss";
+ *   @import "@buildwith/ui/theme.css";
+ *   @source "../node_modules/@buildwith/ui/src";
+ */
+@import "./tokens.css";
+@import "@fontsource-variable/inter/wght.css";
+@import "@fontsource-variable/source-serif-4/wght.css";
+@import "@fontsource-variable/jetbrains-mono/wght.css";
+
+@theme inline {
+  --color-paper: var(--paper);
+  --color-surface: var(--surface);
+  --color-sunken: var(--sunken);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+  --color-lapis: var(--lapis);
+  --color-lapis-soft: var(--lapis-soft);
+  --color-turquoise: var(--turquoise);
+  --color-saffron: var(--saffron);
+  --color-saffron-soft: var(--saffron-soft);
+  --color-danger: var(--danger);
+  --color-plum: var(--plum);
+  --color-moss: var(--moss);
+  --color-on-accent: var(--on-accent);
+
+  --font-sans: "Inter Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-serif: "Source Serif 4 Variable", ui-serif, Georgia, serif;
+  --font-mono: "JetBrains Mono Variable", ui-monospace, monospace;
+
+  --text-xs: 12px;
+  --text-sm: 14px;
+  --text-base: 16px;
+  --text-lg: 18px;
+  --text-xl: 22px;
+  --text-2xl: 28px;
+  --text-3xl: 36px;
+  --text-4xl: 40px;
+
+  --radius-control: 6px;
+  --radius-card: 10px;
+
+  --ease-out: cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+@layer base {
+  html {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--font-sans);
+    -webkit-text-size-adjust: 100%;
+    text-rendering: optimizeLegibility;
+  }
+  body {
+    background: var(--paper);
+    min-height: 100dvh;
+  }
+  :focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+  ::selection {
+    background: var(--lapis-soft);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      transition-duration: 0.01ms !important;
+      animation-duration: 0.01ms !important;
+    }
+  }
+}
+
+/* Rendered Markdown from the server: comments, notes, READMEs. */
+@layer components {
+  .prose-bw {
+    overflow-wrap: anywhere;
+    line-height: 1.6;
+  }
+  .prose-bw > * + * {
+    margin-top: 0.75em;
+  }
+  .prose-bw a {
+    color: var(--lapis);
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 2px;
+  }
+  .prose-bw a.mention,
+  .prose-bw a.hashtag {
+    text-decoration: none;
+  }
+  .prose-bw code {
+    font-family: var(--font-mono);
+    font-size: 0.875em;
+    background: var(--sunken);
+    padding: 0.1em 0.35em;
+    border-radius: 4px;
+  }
+  .prose-bw pre {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    line-height: 1.55;
+    background: var(--sunken);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-control);
+    padding: 12px 14px;
+    overflow-x: auto;
+  }
+  .prose-bw pre code {
+    background: none;
+    padding: 0;
+    font-size: inherit;
+  }
+  .prose-bw blockquote {
+    border-left: 3px solid var(--line);
+    padding-left: 12px;
+    color: var(--muted);
+  }
+  .prose-bw ul {
+    list-style: disc;
+    padding-left: 1.25em;
+  }
+  .prose-bw ol {
+    list-style: decimal;
+    padding-left: 1.25em;
+  }
+  .prose-bw h1,
+  .prose-bw h2,
+  .prose-bw h3,
+  .prose-bw h4 {
+    font-weight: 650;
+    line-height: 1.25;
+    margin-top: 1.4em;
+  }
+  .prose-bw h1 { font-size: 1.6em; }
+  .prose-bw h2 { font-size: 1.35em; }
+  .prose-bw h3 { font-size: 1.15em; }
+  .prose-bw img {
+    max-width: 100%;
+    height: auto;
+    border-radius: var(--radius-control);
+  }
+  .prose-bw table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.95em;
+  }
+  .prose-bw th,
+  .prose-bw td {
+    border: 1px solid var(--line);
+    padding: 6px 10px;
+    text-align: left;
+  }
+  .prose-bw hr {
+    border: 0;
+    border-top: 1px solid var(--line);
+  }
+  .prose-bw .callout {
+    border: 1px solid var(--line);
+    border-left: 3px solid var(--lapis);
+    background: var(--lapis-soft);
+    padding: 10px 14px;
+    border-radius: var(--radius-control);
+  }
+  .prose-bw .callout-warning,
+  .prose-bw .callout-caution {
+    border-left-color: var(--saffron);
+    background: var(--saffron-soft);
+  }
+  .prose-bw .callout-tip {
+    border-left-color: var(--turquoise);
+  }
+  .prose-bw .embed a {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-card);
+    padding: 12px 14px;
+    text-decoration: none;
+    color: var(--ink);
+    background: var(--surface);
+  }
+  .prose-bw .embed-kind {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .prose-bw .embed-url {
+    color: var(--lapis);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* The article reading page: serif, 19 px / 1.7, 68ch column. */
+  .prose-article {
+    font-family: var(--font-serif);
+    font-size: 19px;
+    line-height: 1.7;
+    max-width: 68ch;
+  }
+  .prose-article h2,
+  .prose-article h3,
+  .prose-article h4 {
+    font-family: var(--font-sans);
+    scroll-margin-top: 80px;
+  }
+  .prose-article pre,
+  .prose-article code,
+  .prose-article table {
+    font-family: var(--font-mono);
+  }
+  .prose-article table {
+    font-family: var(--font-sans);
+  }
+
+  /* Server-side syntax highlighting (Chroma classes) in token colours. */
+  .code .k, .code .kd, .code .kn, .code .kr, .code .kt, .code .kc { color: var(--lapis); }
+  .code .s, .code .s1, .code .s2, .code .sb, .code .sr, .code .dl { color: var(--turquoise); }
+  .code .c, .code .c1, .code .cm, .code .cs, .code .ch { color: var(--muted); font-style: italic; }
+  .code .m, .code .mi, .code .mf, .code .mh, .code .il { color: var(--saffron); }
+  .code .nf, .code .fm { color: var(--plum); }
+  .code .nb, .code .bp { color: var(--moss); }
+  .code .o, .code .ow, .code .p { color: var(--ink); }
+}

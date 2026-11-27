@@ -1,0 +1,73 @@
+/*
+ * buildwith.uz design tokens. A calm, well-typeset reading room: warm paper,
+ * ink-dark text, one lapis accent from Samarkand's tiles.
+ * Components use these through Tailwind utilities (bg-paper, text-ink, …);
+ * never hard-code colours. `pnpm --filter @buildwith/ui contrast` checks every
+ * text/background pair against WCAG AA in both themes.
+ */
+
+:root {
+  --paper: #faf8f4;
+  --surface: #ffffff;
+  --sunken: #f3f0ea;
+  --ink: #1f1e1c;
+  --muted: #6b6760;
+  --line: #e8e4dc;
+  --lapis: #2350a0;
+  --lapis-soft: #e7edf8;
+  --turquoise: #0f7171;
+  --saffron: #8f5d14;
+  --saffron-soft: #fbf1df;
+  --danger: #b3261e;
+  --plum: #7a3e7a;
+  --moss: #4a6526;
+  --on-accent: #ffffff;
+  --focus: #2350a0;
+  --mark-tile: #1f1e1c;
+  color-scheme: light;
+}
+
+/* Dark: warm darks, not inverted colours. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #151413;
+    --surface: #1d1c1a;
+    --sunken: #232220;
+    --ink: #ece9e3;
+    --muted: #a29d94;
+    --line: #2c2a27;
+    --lapis: #7fa6f0;
+    --lapis-soft: #1c2638;
+    --turquoise: #4fc4c0;
+    --saffron: #e3b061;
+    --saffron-soft: #2e2518;
+    --danger: #f2867e;
+    --plum: #d49ad4;
+    --moss: #a9c77a;
+    --on-accent: #151413;
+    --focus: #7fa6f0;
+    --mark-tile: #ece9e3;
+    color-scheme: dark;
+  }
+}
+
+:root[data-theme="dark"] {
+  --paper: #151413;
+  --surface: #1d1c1a;
+  --sunken: #232220;
+  --ink: #ece9e3;
+  --muted: #a29d94;
+  --line: #2c2a27;
+  --lapis: #7fa6f0;
+  --lapis-soft: #1c2638;
+  --turquoise: #4fc4c0;
+  --saffron: #e3b061;
+  --saffron-soft: #2e2518;
+  --danger: #f2867e;
+  --plum: #d49ad4;
+  --moss: #a9c77a;
+  --on-accent: #151413;
+  --focus: #7fa6f0;
+  --mark-tile: #ece9e3;
+  color-scheme: dark;
+}

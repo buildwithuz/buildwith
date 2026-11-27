@@ -259,19 +259,21 @@ func (p *P) Comments(ctx context.Context, rows []dbgen.ListCommentsForSubjectRow
 	for _, r := range rows {
 		c := r.Comment
 		ac := api.Comment{
-			Id:         c.ID,
-			ParentId:   c.ParentID,
-			Depth:      int(c.Depth),
-			Author:     um[r.User.ID],
-			BodyHtml:   c.BodyHtml,
-			Points:     int(c.Points),
-			ViewerVote: api.VoteValue(r.ViewerVote),
-			CanEdit:    ptr(p.isViewer(c.AuthorID) && c.DeletedAt == nil),
-			Collapsed:  ptr(r.CollapsedHidden || r.CollapsedMuted),
-			Deleted:    ptr(c.DeletedAt != nil),
-			Killed:     ptr(c.KilledAt != nil),
-			CreatedAt:  c.CreatedAt,
-			EditedAt:   c.EditedAt,
+			Id:          c.ID,
+			SubjectType: api.CommentSubject(c.SubjectType),
+			SubjectId:   c.SubjectID,
+			ParentId:    c.ParentID,
+			Depth:       int(c.Depth),
+			Author:      um[r.User.ID],
+			BodyHtml:    c.BodyHtml,
+			Points:      int(c.Points),
+			ViewerVote:  api.VoteValue(r.ViewerVote),
+			CanEdit:     ptr(p.isViewer(c.AuthorID) && c.DeletedAt == nil),
+			Collapsed:   ptr(r.CollapsedHidden || r.CollapsedMuted),
+			Deleted:     ptr(c.DeletedAt != nil),
+			Killed:      ptr(c.KilledAt != nil),
+			CreatedAt:   c.CreatedAt,
+			EditedAt:    c.EditedAt,
 		}
 		// Every comment keeps its place so replies still make sense. A deleted one
 		// loses its words and author; a killed one keeps its words only for
