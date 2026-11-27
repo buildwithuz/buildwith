@@ -15,11 +15,21 @@ export function ago(iso: string, lang: Lang, now = Date.now()): string {
 // the server and client render different text.
 const TASHKENT_MS = 5 * 60 * 60 * 1000
 
-/** "27 noy 2026" (and "· 14:05" with time), in Tashkent time. */
+/**
+ * A date in Tashkent time: "27.11.2026" in Uzbek (the local convention, and the
+ * same in Latin and Cyrillic), "27 ноя 2026" in Russian, "Nov 27, 2026" in English.
+ */
 export function formatDate(iso: string, lang: Lang, withTime = false): string {
   const d = new Date(new Date(iso).getTime() + TASHKENT_MS)
-  const month = translate(lang, `month.${d.getUTCMonth() + 1}`)
-  const date = lang === 'en' ? `${month} ${d.getUTCDate()}, ${d.getUTCFullYear()}` : `${d.getUTCDate()} ${month} ${d.getUTCFullYear()}`
+  const day = d.getUTCDate()
+  const monthNum = d.getUTCMonth() + 1
+  const month = translate(lang, `month.${monthNum}`)
+  const date =
+    lang === 'uz'
+      ? `${String(day).padStart(2, '0')}.${String(monthNum).padStart(2, '0')}.${d.getUTCFullYear()}`
+      : lang === 'en'
+        ? `${month} ${day}, ${d.getUTCFullYear()}`
+        : `${day} ${month} ${d.getUTCFullYear()}`
   if (!withTime) return date
   const hh = String(d.getUTCHours()).padStart(2, '0')
   const mm = String(d.getUTCMinutes()).padStart(2, '0')

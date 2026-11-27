@@ -1,17 +1,20 @@
 import type { Note, Tag as TagT, User } from '@buildwith/api-client'
 import { Card, CardHeader, Tag } from '@buildwith/ui'
 import { useT, useTx } from '../lib/i18n'
-import { NoteCard } from './NoteCard'
 import { FollowButton } from './FollowButton'
+import { NoteCard } from './NoteCard'
 import { UserAvatar } from './UserLine'
 
 export function Sidebar({
   notes,
+  notesTitle,
   tags,
   suggestions,
   signedIn,
 }: {
   notes?: Note[]
+  /** i18n key for the notes box title; defaults to "Popular notes". */
+  notesTitle?: string
   tags?: TagT[]
   suggestions?: { user: User; mutuals: number }[]
   signedIn: boolean
@@ -19,10 +22,15 @@ export function Sidebar({
   const t = useT()
   const tx = useTx()
   return (
-    <aside className="flex flex-col gap-4">
+    <aside className="flex flex-col gap-4 lg:sticky lg:top-20 lg:self-start">
       {notes && notes.length > 0 && (
         <Card>
-          <CardHeader>{t('feed.popular_notes')}</CardHeader>
+          <CardHeader className="flex items-center justify-between">
+            {t(notesTitle ?? 'feed.popular_notes')}
+            <a href="/notes" className="text-xs font-normal text-lapis hover:underline">
+              {t('feed.see_all')}
+            </a>
+          </CardHeader>
           <div className="divide-y divide-line px-3">
             {notes.map((n) => (
               <NoteCard key={n.id} note={n} signedIn={signedIn} compact />
@@ -38,7 +46,10 @@ export function Sidebar({
               <li key={user.id} className="flex items-center gap-2">
                 <UserAvatar user={user} size={32} />
                 <div className="min-w-0 flex-1">
-                  <a href={`/@${user.username}`} className="block truncate text-sm font-medium text-ink hover:underline">
+                  <a
+                    href={`/@${user.username}`}
+                    className="block truncate text-sm font-medium text-ink hover:underline"
+                  >
                     {tx.text(user.display_name || user.username)}
                   </a>
                   <span className="text-xs text-muted">{t('feed.mutuals', { count: mutuals })}</span>

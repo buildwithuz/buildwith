@@ -1,8 +1,8 @@
 import type { Article } from '@buildwith/api-client'
 import { Badge, Tag } from '@buildwith/ui'
 import { useLang, useT, useTx } from '../lib/i18n'
-import { UserAvatar } from './UserLine'
 import { formatDate } from '../lib/time'
+import { UserAvatar } from './UserLine'
 
 export function ArticleCard({ a, showStatus = false }: { a: Article; showStatus?: boolean }) {
   const t = useT()
@@ -26,7 +26,9 @@ export function ArticleCard({ a, showStatus = false }: { a: Article; showStatus?
             {tx.text(a.title)}
           </a>
         </h2>
-        {a.subtitle && <p className="mt-1 line-clamp-2 font-serif text-[15px] text-muted">{tx.text(a.subtitle)}</p>}
+        {a.subtitle && (
+          <p className="mt-1 line-clamp-2 font-serif text-[15px] text-muted">{tx.text(a.subtitle)}</p>
+        )}
         <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted">
           <span>{t('count.minutes_read', { count: a.reading_minutes })}</span>
           <span>· {t('count.points', { count: a.points })}</span>
@@ -37,7 +39,8 @@ export function ArticleCard({ a, showStatus = false }: { a: Article; showStatus?
         </div>
       </div>
       {a.cover && (
-        <a href={href} className="hidden shrink-0 sm:block" tabIndex={-1} aria-hidden="true">
+        <a href={href} className="hidden shrink-0 sm:block" tabIndex={-1}>
+          <span className="sr-only">{tx.text(a.title)}</span>
           <img src={a.cover.url} alt="" className="h-24 w-36 rounded-control object-cover" loading="lazy" />
         </a>
       )}

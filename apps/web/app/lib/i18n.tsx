@@ -32,15 +32,21 @@ export function useT() {
       return lang === 'uz' ? display(s, script) : s
     }
     /** For messages with <tags>: map each tag to a renderer. */
-    t.rich = (key: string, tags: Record<string, (chunks: ReactNode) => ReactNode>, vars?: Vars): ReactNode => {
+    t.rich = (
+      key: string,
+      tags: Record<string, (chunks: ReactNode) => ReactNode>,
+      vars?: Vars,
+    ): ReactNode => {
       const handlers: Vars = { ...vars }
       for (const [k, fn] of Object.entries(tags)) {
-        handlers[k] = (chunks: unknown[]) => fn(<>{chunks as ReactNode[]}</>)
+        handlers[k] = (chunks: unknown[]) => fn(chunks as ReactNode)
       }
       const parts = translateParts(lang, key, handlers)
       return parts.map((p, i) => (
         // biome-ignore lint/suspicious/noArrayIndexKey: message parts are positional
-        <Fragment key={i}>{typeof p === 'string' && lang === 'uz' ? display(p, script) : (p as ReactNode)}</Fragment>
+        <Fragment key={i}>
+          {typeof p === 'string' && lang === 'uz' ? display(p, script) : (p as ReactNode)}
+        </Fragment>
       ))
     }
     return t

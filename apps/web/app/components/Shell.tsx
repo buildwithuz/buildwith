@@ -1,4 +1,4 @@
-import { Avatar, Dialog, GirihBand, Kbd, Logo, Menu, Select, cx } from '@buildwith/ui'
+import { Avatar, cx, Dialog, GirihBand, Kbd, Logo, Menu, Select } from '@buildwith/ui'
 import {
   Bell,
   Bookmark,
@@ -24,7 +24,10 @@ export function Shell({ children }: { children: ReactNode }) {
   const t = useT()
   return (
     <>
-      <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-control focus:bg-surface focus:px-3 focus:py-2">
+      <a
+        href="#main"
+        className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-control focus:bg-surface focus:px-3 focus:py-2"
+      >
         {t('nav.skip')}
       </a>
       <TopBar />
@@ -82,19 +85,29 @@ function TopBar() {
             </a>
           ))}
         </nav>
-        <form action="/search" className="ml-auto hidden md:block" role="search">
-          <label className="relative block">
-            <span className="sr-only">{t('nav.search')}</span>
-            <Search size={15} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-muted" aria-hidden="true" />
-            <input
-              name="q"
-              type="search"
-              placeholder={`${t('nav.search')}  ⌘K`}
-              className="h-9 w-44 rounded-control border border-line bg-surface pl-8 pr-2 text-sm text-ink placeholder:text-muted focus:w-64 focus:border-lapis focus:outline-none xl:w-56"
-            />
-          </label>
-        </form>
-        <a href="/search" className="ml-auto rounded-control p-2 text-muted hover:text-ink md:hidden" aria-label={t('nav.search')}>
+        <search className="ml-auto hidden md:block">
+          <form action="/search">
+            <label className="relative block">
+              <span className="sr-only">{t('nav.search')}</span>
+              <Search
+                size={15}
+                className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-muted"
+                aria-hidden="true"
+              />
+              <input
+                name="q"
+                type="search"
+                placeholder={`${t('nav.search')}  ⌘K`}
+                className="h-9 w-44 rounded-control border border-line bg-surface pl-8 pr-2 text-sm text-ink placeholder:text-muted focus:w-64 focus:border-lapis focus:outline-none xl:w-56"
+              />
+            </label>
+          </form>
+        </search>
+        <a
+          href="/search"
+          className="ml-auto rounded-control p-2 text-muted hover:text-ink md:hidden"
+          aria-label={t('nav.search')}
+        >
           <Search size={20} strokeWidth={1.75} />
         </a>
         {me ? (
@@ -104,7 +117,12 @@ function TopBar() {
             <Menu
               trigger={
                 <button type="button" aria-label={t('nav.profile')} className="rounded-full">
-                  <Avatar name={me.display_name || me.username} src={me.avatar_url} accent={me.accent} size={32} />
+                  <Avatar
+                    name={me.display_name || me.username}
+                    src={me.avatar_url}
+                    accent={me.accent}
+                    size={32}
+                  />
                 </button>
               }
               items={[
@@ -112,14 +130,19 @@ function TopBar() {
                 { label: t('nav.bookmarks'), href: '/bookmarks', icon: <Bookmark size={15} /> },
                 { label: t('nav.my_articles'), href: '/write', icon: <FileText size={15} /> },
                 { label: t('nav.settings'), href: '/settings', icon: <Settings size={15} /> },
-                ...(me.is_moderator ? [{ label: t('nav.moderation'), href: '/mod', icon: <Shield size={15} /> }] : []),
+                ...(me.is_moderator
+                  ? [{ label: t('nav.moderation'), href: '/mod', icon: <Shield size={15} /> }]
+                  : []),
                 'separator',
                 { label: t('nav.logout'), href: '/logout', icon: <LogOut size={15} />, danger: true },
               ]}
             />
           </>
         ) : (
-          <a href="/login" className="rounded-control bg-lapis px-3 py-1.5 text-sm font-medium text-on-accent hover:opacity-90">
+          <a
+            href="/login"
+            className="rounded-control bg-lapis px-3 py-1.5 text-sm font-medium text-on-accent hover:opacity-90"
+          >
             {t('nav.login')}
           </a>
         )}
@@ -160,7 +183,11 @@ function UnreadBell() {
     return () => es.close()
   }, [])
   return (
-    <a href="/notifications" className="relative rounded-control p-2 text-muted hover:text-ink" aria-label={t('nav.notifications')}>
+    <a
+      href="/notifications"
+      className="relative rounded-control p-2 text-muted hover:text-ink"
+      aria-label={t('nav.notifications')}
+    >
       <Bell size={20} strokeWidth={1.75} />
       {count ? (
         <span className="absolute right-1 top-1 min-w-4 rounded-full bg-danger px-1 text-center font-mono text-[10px] leading-4 text-paper">
@@ -193,7 +220,10 @@ function BottomNav() {
           href={href}
           aria-label={t(key)}
           aria-current={isActive(pathname, href) ? 'page' : undefined}
-          className={cx('flex flex-1 flex-col items-center gap-0.5 py-2 text-[11px]', isActive(pathname, href) ? 'text-ink' : 'text-muted')}
+          className={cx(
+            'flex flex-1 flex-col items-center gap-0.5 py-2 text-[11px]',
+            isActive(pathname, href) ? 'text-ink' : 'text-muted',
+          )}
         >
           <Icon size={20} strokeWidth={1.75} aria-hidden="true" />
           <span className="max-w-full truncate px-1">{t(key)}</span>
@@ -214,38 +244,94 @@ function Footer() {
         <div className="flex flex-col gap-2">
           <p className="text-ink">{t('app.tagline')}</p>
           <nav className="flex flex-wrap gap-x-4 gap-y-1">
-            <a href="/about" className="hover:text-ink">{t('footer.about')}</a>
-            <a href="/guidelines" className="hover:text-ink">{t('footer.guidelines')}</a>
-            <a href="/modlog" className="hover:text-ink">{t('footer.modlog')}</a>
-            <a href="/privacy" className="hover:text-ink">{t('footer.privacy')}</a>
-            <a href="/terms" className="hover:text-ink">{t('footer.terms')}</a>
-            <a href="https://github.com/buildwithuz/buildwith" className="hover:text-ink">{t('footer.source')}</a>
+            <a href="/about" className="hover:text-ink">
+              {t('footer.about')}
+            </a>
+            <a href="/guidelines" className="hover:text-ink">
+              {t('footer.guidelines')}
+            </a>
+            <a href="/modlog" className="hover:text-ink">
+              {t('footer.modlog')}
+            </a>
+            <a href="/privacy" className="hover:text-ink">
+              {t('footer.privacy')}
+            </a>
+            <a href="/terms" className="hover:text-ink">
+              {t('footer.terms')}
+            </a>
+            <a href="https://github.com/buildwithuz/buildwith" className="hover:text-ink">
+              {t('footer.source')}
+            </a>
           </nav>
           <p className="text-xs">{t('footer.made')}</p>
         </div>
         <Form method="post" action="/actions/prefs" className="flex flex-wrap items-end gap-2">
           <CsrfField />
           <input type="hidden" name="redirectTo" value={pathname + search} />
-          <PrefSelect name="lang" label={t('prefs.lang')} value={root?.lang ?? 'uz'} options={[['uz', "Oʻzbekcha"], ['ru', 'Русский'], ['en', 'English']]} />
-          <PrefSelect name="script" label={t('prefs.script')} value={root?.script ?? 'latn'} options={[['latn', t('prefs.latn')], ['cyrl', t('prefs.cyrl')]]} />
-          <PrefSelect name="theme" label={t('prefs.theme')} value={root?.theme ?? 'system'} options={[['system', t('prefs.theme_system')], ['light', t('prefs.theme_light')], ['dark', t('prefs.theme_dark')]]} />
-          <button type="submit" className="h-8 rounded-control border border-line px-3 text-xs text-ink hover:bg-sunken">
-            {t('common.save')}
-          </button>
+          <PrefSelect
+            name="lang"
+            label={t('prefs.lang')}
+            value={root?.lang ?? 'uz'}
+            options={[
+              ['uz', 'Oʻzbekcha'],
+              ['ru', 'Русский'],
+              ['en', 'English'],
+            ]}
+          />
+          <PrefSelect
+            name="script"
+            label={t('prefs.script')}
+            value={root?.script ?? 'latn'}
+            options={[
+              ['latn', t('prefs.latn')],
+              ['cyrl', t('prefs.cyrl')],
+            ]}
+          />
+          <PrefSelect
+            name="theme"
+            label={t('prefs.theme')}
+            value={root?.theme ?? 'system'}
+            options={[
+              ['system', t('prefs.theme_system')],
+              ['light', t('prefs.theme_light')],
+              ['dark', t('prefs.theme_dark')],
+            ]}
+          />
+          <noscript>
+            <button
+              type="submit"
+              className="h-8 rounded-control border border-line px-3 text-xs text-ink hover:bg-sunken"
+            >
+              {t('common.save')}
+            </button>
+          </noscript>
         </Form>
       </div>
     </footer>
   )
 }
 
-function PrefSelect({ name, label, value, options }: { name: string; label: string; value: string; options: [string, string][] }) {
+function PrefSelect({
+  name,
+  label,
+  value,
+  options,
+}: {
+  name: string
+  label: string
+  value: string
+  options: [string, string][]
+}) {
+  const id = `pref-${name}`
   return (
-    <label className="flex flex-col gap-1 text-xs">
-      {label}
+    <div className="flex flex-col gap-1 text-xs">
+      <label htmlFor={id}>{label}</label>
       <Select
+        id={id}
         name={name}
         defaultValue={value}
-        className="h-8 w-auto text-xs"
+        size="sm"
+        className="w-auto"
         onChange={(e) => e.currentTarget.form?.requestSubmit()}
       >
         {options.map(([v, l]) => (
@@ -254,7 +340,7 @@ function PrefSelect({ name, label, value, options }: { name: string; label: stri
           </option>
         ))}
       </Select>
-    </label>
+    </div>
   )
 }
 
@@ -301,21 +387,31 @@ function Shortcuts() {
       [t('nav.settings'), '/settings'],
       [t('footer.modlog'), '/modlog'],
     ]
-    if (root?.me) pages.splice(1, 0, [t('nav.following'), '/following'], [t('nav.notifications'), '/notifications'])
+    if (root?.me)
+      pages.splice(1, 0, [t('nav.following'), '/following'], [t('nav.notifications'), '/notifications'])
     const needle = q.trim().toLowerCase()
     return pages.filter(([label]) => !needle || label.toLowerCase().includes(needle))
   }, [q, t, root?.me])
 
   return (
     <>
-      <Dialog open={palette} onOpenChange={setPalette} title={t('shortcuts.palette')} closeLabel={t('common.close')}>
+      <Dialog
+        open={palette}
+        onOpenChange={setPalette}
+        title={t('shortcuts.palette')}
+        closeLabel={t('common.close')}
+      >
         <form
           action="/search"
           onSubmit={(e) => {
             e.preventDefault()
             setPalette(false)
             const first = commands[0]
-            navigate(first && q && first[0].toLowerCase().includes(q.toLowerCase()) ? first[1] : `/search?q=${encodeURIComponent(q)}`)
+            navigate(
+              first && q && first[0].toLowerCase().includes(q.toLowerCase())
+                ? first[1]
+                : `/search?q=${encodeURIComponent(q)}`,
+            )
           }}
         >
           <input
@@ -330,14 +426,21 @@ function Shortcuts() {
         <ul className="mt-2 max-h-72 overflow-y-auto">
           {commands.map(([label, href]) => (
             <li key={href}>
-              <a href={href} onClick={() => setPalette(false)} className="block rounded-control px-2 py-1.5 text-sm text-ink hover:bg-sunken">
+              <a
+                href={href}
+                onClick={() => setPalette(false)}
+                className="block rounded-control px-2 py-1.5 text-sm text-ink hover:bg-sunken"
+              >
                 {label}
               </a>
             </li>
           ))}
           {q && (
             <li>
-              <a href={`/search?q=${encodeURIComponent(q)}`} className="block rounded-control px-2 py-1.5 text-sm text-lapis hover:bg-sunken">
+              <a
+                href={`/search?q=${encodeURIComponent(q)}`}
+                className="block rounded-control px-2 py-1.5 text-sm text-lapis hover:bg-sunken"
+              >
                 {t('nav.search')}: “{q}”
               </a>
             </li>

@@ -11,7 +11,9 @@ export async function action({ request, context }: Route.ActionArgs) {
     switch (intent) {
       case 'kill':
       case 'unkill':
-        return client.POST('/mod/kill', { body: { ...subject, killed: intent === 'kill', reason: get('reason') } })
+        return client.POST('/mod/kill', {
+          body: { ...subject, killed: intent === 'kill', reason: get('reason') },
+        })
       case 'release':
         return client.POST('/mod/holds', { body: subject })
       case 'dismiss':
@@ -22,9 +24,13 @@ export async function action({ request, context }: Route.ActionArgs) {
         })
       case 'ban':
       case 'unban':
-        return client.POST('/mod/ban', { body: { username: get('username'), banned: intent === 'ban', reason: get('reason') } })
+        return client.POST('/mod/ban', {
+          body: { username: get('username'), banned: intent === 'ban', reason: get('reason') },
+        })
       default:
-        return client.POST('/mod/feature', { body: { article_id: Number(get('article_id')), featured: intent === 'feature' } })
+        return client.POST('/mod/feature', {
+          body: { article_id: Number(get('article_id')), featured: intent === 'feature' },
+        })
     }
   })()
   return finish(request, js, res.response.ok ? { ok: true } : actionError(res))

@@ -1,10 +1,11 @@
 import { buttonClass, EmptyState, NavTabs } from '@buildwith/ui'
 import { MessageCircleQuestion, Sparkles } from 'lucide-react'
+import { Hero, HomeComposer } from '../components/Home'
 import { LinkRow } from '../components/LinkRow'
 import { LoadMore } from '../components/LoadMore'
 import { Sidebar } from '../components/Sidebar'
 import { api, orThrow, viewer } from '../lib/api.server'
-import { useSignedIn } from '../lib/hooks'
+import { useMe, useSignedIn } from '../lib/hooks'
 import { useT } from '../lib/i18n'
 import { pageMeta } from '../lib/meta'
 import type { Route } from './+types/top'
@@ -28,11 +29,15 @@ export async function loader({ request, context }: Route.LoaderArgs) {
     cursor: q.get('cursor') ?? undefined,
     limit: 30,
   } as const
-  const sortForKind = mode === 'savol' || mode === 'korsat' ? (q.get('sort') === 'top' ? 'top' : 'new') : query.sort
+  const sortForKind =
+    mode === 'savol' || mode === 'korsat' ? (q.get('sort') === 'top' ? 'top' : 'new') : query.sort
   const me = viewer(context).me
-  const [links, popular, tags, who] = await Promise.all([
+  const [links, popular, latest, tags, who] = await Promise.all([
     client.GET('/links', { params: { query: { ...query, sort: sortForKind } } }),
-    mode === 'top' && !query.cursor ? client.GET('/notes/popular', { params: { query: { limit: 4 } } }) : null,
+    mode === 'top' && !query.cursor
+      ? client.GET('/notes/popular', { params: { query: { limit: 4 } } })
+      : null,
+    mode === 'top' && !query.cursor ? client.GET('/notes', { params: { query: { limit: 4 } } }) : null,
     client.GET('/tags', { params: { query: { limit: 16 } } }),
     me && mode === 'top' ? client.GET('/who-to-follow', { params: { query: { limit: 3 } } }) : null,
   ])
@@ -44,29 +49,44 @@ export async function loader({ request, context }: Route.LoaderArgs) {
     offset: query.cursor ? Number(q.get('n') ?? 0) : 0,
     links: page.items,
     next: page.nextCursor ?? null,
-    popular: popular?.data?.items ?? [],
+    // Popular notes when there are any today; otherwise the latest, so notes are always on the home page.
+    notes: popular?.data?.items.length ? popular.data.items : (latest?.data?.items ?? []),
+    notesTitle: popular?.data?.items.length ? 'feed.popular_notes' : 'feed.latest_notes',
     tags: tags.data?.items ?? [],
     who: who?.data?.items ?? [],
   }
 }
 
 export function meta({ loaderData, matches }: Route.MetaArgs) {
-  const key = { top: undefined, new: 'nav.new', best: 'nav.best', savol: 'nav.savol', korsat: 'nav.korsat' }[loaderData?.mode ?? 'top']
+  const key = { top: undefined, new: 'nav.new', best: 'nav.best', savol: 'nav.savol', korsat: 'nav.korsat' }[
+    loaderData?.mode ?? 'top'
+  ]
   return pageMeta(matches, { titleKey: key })
 }
 
 export default function Top({ loaderData }: Route.ComponentProps) {
   const t = useT()
-  const { mode, links, next, popular, tags, who, domain, sort } = loaderData
+  const { mode, links, next, notes, notesTitle, tags, who, domain, sort } = loaderData
   const root = useSignedIn()
+  const me = useMe()
+  const ListTitle = mode === 'top' && !me ? 'h2' : 'h1'
   const isList = mode === 'top' || mode === 'new' || mode === 'best'
   return (
     <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_300px]">
       <section aria-labelledby="list-title">
+        {mode === 'top' && (me ? <HomeComposer /> : <Hero />)}
         <div className="mb-2 flex items-end justify-between gap-3">
-          <h1 id="list-title" className="text-xl font-semibold text-ink">
-            {domain ?? t(mode === 'savol' ? 'feed.savol_title' : mode === 'korsat' ? 'feed.korsat_title' : 'feed.top_title')}
-          </h1>
+          {/* The visitor hero carries the page's h1; then the list title steps down to h2. */}
+          <ListTitle id="list-title" className="text-xl font-semibold text-ink">
+            {domain ??
+              t(
+                mode === 'savol'
+                  ? 'feed.savol_title'
+                  : mode === 'korsat'
+                    ? 'feed.korsat_title'
+                    : 'feed.top_title',
+              )}
+          </ListTitle>
           {mode === 'savol' && (
             <a href="/submit?kind=ask" className={buttonClass('primary', 'sm')}>
               <MessageCircleQuestion size={16} aria-hidden="true" /> {t('compose.question')}
@@ -97,20 +117,32 @@ export default function Top({ loaderData }: Route.ComponentProps) {
           />
         )}
         {links.length === 0 ? (
-          <EmptyState title={t('feed.empty')} action={root ? <a href="/submit" className={buttonClass('secondary', 'sm')}>{t('compose.submit_link')}</a> : undefined} />
+          <EmptyState
+            title={t('feed.empty')}
+            action={
+              root ? (
+                <a href="/submit" className={buttonClass('secondary', 'sm')}>
+                  {t('compose.submit_link')}
+                </a>
+              ) : undefined
+            }
+          />
         ) : (
           <ol className="divide-y divide-line">
             {links.map((l, i) => (
               <li key={l.id}>
-                <LinkRow link={l} rank={mode === 'top' || mode === 'best' ? i + 1 : undefined} signedIn={root} />
+                <LinkRow
+                  link={l}
+                  rank={mode === 'top' || mode === 'best' ? i + 1 : undefined}
+                  signedIn={root}
+                />
               </li>
             ))}
           </ol>
         )}
         <LoadMore cursor={next} />
       </section>
-      <Sidebar notes={popular} tags={tags} suggestions={who} signedIn={root} />
+      <Sidebar notes={notes} notesTitle={notesTitle} tags={tags} suggestions={who} signedIn={root} />
     </div>
   )
 }
-

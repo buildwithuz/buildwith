@@ -15,13 +15,15 @@ import {
 } from 'react-router'
 import './app.css'
 import { createClient } from '@buildwith/api-client'
+import type { Route } from './+types/root'
 import { ErrorPage } from './components/ErrorPage'
+import { LightboxRoot } from './components/media/Lightbox'
 import { Shell } from './components/Shell'
 import { API_ORIGIN } from './lib/api.server'
 import { I18nProvider } from './lib/i18n'
+import { useNonce } from './lib/nonce'
 import { anonPrefs } from './lib/prefs.server'
 import { type Viewer, viewerContext } from './lib/session'
-import type { Route } from './+types/root'
 
 export const links: LinksFunction = () => [
   { rel: 'icon', href: '/favicon.svg', type: 'image/svg+xml' },
@@ -33,7 +35,8 @@ export const links: LinksFunction = () => [
 // One session lookup per request; every loader reads it from context.
 const loadViewer: MiddlewareFunction<Response> = async ({ request, context }, next) => {
   const cookie = request.headers.get('cookie')
-  const client = createClient({ baseUrl: API_ORIGIN, cookie })
+  const forwardedFor = request.headers.get('x-forwarded-for')
+  const client = createClient({ baseUrl: API_ORIGIN, cookie, forwardedFor })
   const res = await client.GET('/auth/me')
   if (!res.data) throw data({ code: 'internal' }, { status: 503 })
   const s = res.data
@@ -47,6 +50,7 @@ const loadViewer: MiddlewareFunction<Response> = async ({ request, context }, ne
     script: s.user?.script ?? prefs.script,
     theme: s.user?.theme ?? prefs.theme,
     cookie,
+    forwardedFor,
   }
   context.set(viewerContext, v)
   const response = await next()
@@ -78,6 +82,7 @@ export function useRoot(): RootData {
 
 export function Layout({ children }: { children: React.ReactNode }) {
   const root = useRouteLoaderData<RootData>('root')
+  const nonce = useNonce()
   const theme = root?.theme ?? 'system'
   const lang = root?.lang ?? 'uz'
   const htmlLang = lang === 'uz' && root?.script === 'cyrl' ? 'uz-Cyrl' : lang
@@ -93,8 +98,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
       </head>
       <body>
         {children}
-        <ScrollRestoration />
-        <Scripts />
+        <ScrollRestoration nonce={nonce} />
+        <Scripts nonce={nonce} />
       </body>
     </html>
   )
@@ -104,9 +109,11 @@ export default function App({ loaderData }: Route.ComponentProps) {
   return (
     <I18nProvider lang={loaderData.lang} script={loaderData.script}>
       <ToastProvider label="Notifications">
-        <Shell>
-          <Outlet />
-        </Shell>
+        <LightboxRoot>
+          <Shell>
+            <Outlet />
+          </Shell>
+        </LightboxRoot>
       </ToastProvider>
     </I18nProvider>
   )

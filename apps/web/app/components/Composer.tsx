@@ -1,14 +1,14 @@
 import type { User } from '@buildwith/api-client'
 import { Avatar, Button, cx, Input, Select, Textarea } from '@buildwith/ui'
-import { Code2, ImagePlus, X } from 'lucide-react'
+import { Code2 } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { useFetcher } from 'react-router'
 import { useT } from '../lib/i18n'
-import { FormFields, useCsrf } from './forms'
+import { FormFields, useHydrated } from './forms'
+import { ImageDropzone, useImageUploads } from './media/ImageDropzone'
+import { imagesFrom } from './media/upload'
 
 const MAX = 500
-
-type Uploaded = { id: number; url: string; alt: string }
 
 /**
  * The note composer: text with a live character ring, an optional code block,
@@ -31,52 +31,40 @@ export function Composer({
   onPosted?: () => void
 }) {
   const t = useT()
-  const csrf = useCsrf()
+  const hydrated = useHydrated()
   const f = useFetcher<{ ok?: boolean; error?: string; path?: string }>()
   const [text, setText] = useState('')
   const [showCode, setShowCode] = useState(false)
-  const [media, setMedia] = useState<Uploaded[]>([])
-  const [uploading, setUploading] = useState(false)
-  const [uploadError, setUploadError] = useState<string | null>(null)
+  const uploads = useImageUploads({ kind: 'note', max: 4 })
+  const resetUploads = uploads.reset
   const formRef = useRef<HTMLFormElement>(null)
-  const fileRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     if (f.state === 'idle' && f.data?.ok) {
       formRef.current?.reset()
       setText('')
-      setMedia([])
+      resetUploads()
       setShowCode(false)
       onPosted?.()
     }
-  }, [f.state, f.data, onPosted])
+  }, [f.state, f.data, onPosted, resetUploads])
 
   const left = MAX - [...text].length
-  const busy = f.state !== 'idle' || uploading
-
-  async function upload(files: FileList | null) {
-    if (!files) return
-    setUploadError(null)
-    for (const file of Array.from(files).slice(0, 4 - media.length)) {
-      setUploading(true)
-      const body = new FormData()
-      body.set('kind', 'note')
-      body.set('file', file)
-      const res = await fetch('/v1/media', { method: 'POST', body, headers: { 'X-CSRF-Token': csrf } })
-      setUploading(false)
-      if (!res.ok) {
-        const e = await res.json().catch(() => ({ code: 'internal' }))
-        setUploadError(t(`error.${e.code}`))
-        continue
-      }
-      const m = await res.json()
-      setMedia((xs) => [...xs, { id: m.id, url: m.url, alt: '' }])
-    }
-    if (fileRef.current) fileRef.current.value = ''
-  }
+  const busy = f.state !== 'idle' || !uploads.ready
 
   return (
-    <f.Form ref={formRef} method="post" action="/actions/note-new" className="flex gap-3 py-3">
+    <f.Form
+      ref={formRef}
+      method="post"
+      action="/actions/note-new"
+      className="flex gap-3 py-3"
+      onDragOver={(e) => e.dataTransfer.types.includes('Files') && e.preventDefault()}
+      onDrop={(e) => {
+        if (!e.dataTransfer.types.includes('Files')) return
+        e.preventDefault()
+        uploads.add(imagesFrom(e.dataTransfer))
+      }}
+    >
       <FormFields />
       {replyTo && <input type="hidden" name="reply_to_id" value={replyTo} />}
       {quoteOf && <input type="hidden" name="quote_of_id" value={quoteOf} />}
@@ -88,48 +76,33 @@ export function Composer({
           placeholder={placeholder ?? t('compose.note_placeholder')}
           value={text}
           onChange={(e) => setText(e.target.value)}
+          onPaste={uploads.onPaste}
           autoFocus={autoFocus}
           rows={text.length > 80 ? 4 : 2}
           className="resize-y border-transparent bg-transparent px-0 text-[17px] focus:border-transparent"
         />
         {showCode && (
           <div className="flex flex-col gap-2 rounded-card border border-line p-2">
-            <Input name="code_lang" placeholder={t('compose.code_lang')} aria-label={t('compose.code_lang')} className="h-8 w-40 font-mono text-sm" />
-            <Textarea name="code_body" aria-label={t('compose.code')} rows={5} className="font-mono text-sm" spellCheck={false} />
+            <Input
+              name="code_lang"
+              placeholder={t('compose.code_lang')}
+              aria-label={t('compose.code_lang')}
+              size="sm"
+              className="w-48 font-mono"
+            />
+            <Textarea
+              name="code_body"
+              aria-label={t('compose.code')}
+              rows={5}
+              className="font-mono text-sm"
+              spellCheck={false}
+            />
           </div>
         )}
-        {media.length > 0 && (
-          <div className="grid grid-cols-2 gap-2">
-            {media.map((m, i) => (
-              <div key={m.id} className="flex flex-col gap-1">
-                <div className="relative">
-                  <img src={m.url} alt="" className="h-28 w-full rounded-control object-cover" />
-                  <button
-                    type="button"
-                    onClick={() => setMedia((xs) => xs.filter((x) => x.id !== m.id))}
-                    className="absolute right-1 top-1 rounded-full bg-ink/70 p-1 text-paper"
-                    aria-label={t('common.delete')}
-                  >
-                    <X size={14} />
-                  </button>
-                </div>
-                <input type="hidden" name="media_id" value={m.id} />
-                <Input
-                  name="media_alt"
-                  required
-                  placeholder={t('compose.alt')}
-                  aria-label={t('compose.alt')}
-                  value={m.alt}
-                  onChange={(e) => setMedia((xs) => xs.map((x, j) => (j === i ? { ...x, alt: e.target.value } : x)))}
-                  className="h-8 text-sm"
-                />
-              </div>
-            ))}
-          </div>
-        )}
-        {(f.data?.error || uploadError) && (
+        <ImageDropzone uploads={uploads} />
+        {f.data?.error && (
           <p role="alert" className="text-sm text-danger">
-            {uploadError ?? t(`error.${f.data?.error}`)}
+            {t(`error.${f.data.error}`)}
           </p>
         )}
         <div className="flex flex-wrap items-center gap-2 border-t border-line pt-2">
@@ -142,22 +115,13 @@ export function Composer({
           >
             <Code2 size={18} strokeWidth={1.75} />
           </button>
-          <label
-            className={cx('cursor-pointer rounded-control p-1.5 text-muted hover:bg-sunken', media.length >= 4 && 'pointer-events-none opacity-40')}
-            aria-label={t('compose.add_image')}
-          >
-            <ImagePlus size={18} strokeWidth={1.75} />
-            <input
-              ref={fileRef}
-              type="file"
-              accept="image/jpeg,image/png,image/webp"
-              multiple
-              className="sr-only"
-              onChange={(e) => upload(e.target.files)}
-            />
-          </label>
           {!replyTo && (
-            <Select name="reply_policy" aria-label={t('compose.who_can_reply')} className="h-8 w-auto text-xs">
+            <Select
+              name="reply_policy"
+              aria-label={t('compose.who_can_reply')}
+              size="sm"
+              className="w-auto text-xs"
+            >
               <option value="everyone">{t('compose.reply_everyone')}</option>
               <option value="following">{t('compose.reply_following')}</option>
               <option value="mentioned">{t('compose.reply_mentioned')}</option>
@@ -165,7 +129,16 @@ export function Composer({
           )}
           <span className="ml-auto flex items-center gap-3">
             <CharRing left={left} label={t('compose.chars_left', { count: left })} />
-            <Button type="submit" size="sm" disabled={busy || left < 0 || (!text.trim() && media.length === 0 && !showCode && !quoteOf)}>
+            <Button
+              type="submit"
+              size="sm"
+              disabled={
+                busy ||
+                left < 0 ||
+                !uploads.allHaveAlt ||
+                (hydrated && !text.trim() && uploads.items.length === 0 && !showCode && !quoteOf)
+              }
+            >
               {t(replyTo ? 'common.reply' : 'common.post')}
             </Button>
           </span>
@@ -182,7 +155,9 @@ function CharRing({ left, label }: { left: number; label: string }) {
   const color = left < 0 ? 'var(--danger)' : left < 50 ? 'var(--saffron)' : 'var(--lapis)'
   return (
     <span className="flex items-center gap-1.5" title={label}>
-      {left < 50 && <span className={cx('font-mono text-xs', left < 0 ? 'text-danger' : 'text-muted')}>{left}</span>}
+      {left < 50 && (
+        <span className={cx('font-mono text-xs', left < 0 ? 'text-danger' : 'text-muted')}>{left}</span>
+      )}
       <svg width="22" height="22" viewBox="0 0 22 22" aria-hidden="true">
         <circle cx="11" cy="11" r={r} fill="none" stroke="var(--line)" strokeWidth="2" />
         <circle
@@ -201,4 +176,3 @@ function CharRing({ left, label }: { left: number; label: string }) {
     </span>
   )
 }
-

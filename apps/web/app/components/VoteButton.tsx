@@ -1,8 +1,12 @@
-import { ChevronDown, ChevronUp } from 'lucide-react'
-import { useFetcher } from 'react-router'
 import { cx } from '@buildwith/ui'
+import { ChevronDown, ChevronUp } from 'lucide-react'
+import { useState } from 'react'
+import { useFetcher } from 'react-router'
 import { useT } from '../lib/i18n'
 import { FormFields } from './forms'
+
+const PILL =
+  'flex w-10 shrink-0 flex-col items-center gap-0 self-start rounded-control border border-line bg-surface py-1 transition-colors duration-150'
 
 /**
  * Upvote (and, for comments, downvote) with an optimistic count. A plain form
@@ -29,17 +33,22 @@ export function VoteButton({
   layout?: 'column' | 'row'
 }) {
   const t = useT()
+  // Hooks first, every render: React requires the same hook order whatever the branch.
+  const f = useFetcher<{ points: number; viewer_vote: -1 | 0 | 1 }>()
+  const [bump, setBump] = useState(0)
+  const shell = layout === 'column' ? PILL : 'flex items-center gap-1'
   if (!signedIn) {
     return (
-      <div className={cx('flex items-center', layout === 'column' ? 'w-8 flex-col' : 'gap-1')}>
-        <a href="/login" aria-label={t('action.upvote')} className="rounded-control p-0.5 text-muted hover:text-ink">
-          <ChevronUp size={18} strokeWidth={1.75} />
-        </a>
+      <a
+        href="/login"
+        aria-label={t('action.upvote')}
+        className={cx(shell, 'text-muted hover:border-lapis hover:text-lapis')}
+      >
+        <ChevronUp size={16} strokeWidth={2} aria-hidden="true" />
         <span className="font-mono text-xs tabular-nums text-ink">{points}</span>
-      </div>
+      </a>
     )
   }
-  const f = useFetcher<{ points: number; viewer_vote: -1 | 0 | 1 }>()
   let shownVote = vote
   let shownPoints = points
   if (f.formData) {
@@ -60,13 +69,20 @@ export function VoteButton({
         value={active ? 0 : value}
         disabled={disabled}
         aria-pressed={active}
+        onClick={() => !active && setBump((b) => b + 1)}
         aria-label={t(active ? 'action.unvote' : value === 1 ? 'action.upvote' : 'action.downvote')}
         className={cx(
-          'rounded-control p-0.5 transition-colors duration-150 disabled:opacity-40',
-          active ? (value === 1 ? 'text-lapis' : 'text-danger') : 'text-muted hover:text-ink',
+          'rounded-control p-0.5 transition-colors duration-150 disabled:cursor-default disabled:opacity-40',
+          active ? (value === 1 ? 'text-lapis' : 'text-danger') : 'text-muted hover:text-lapis',
         )}
       >
-        <Icon size={18} strokeWidth={active ? 2.5 : 1.75} />
+        <Icon
+          key={active ? bump : -1}
+          size={16}
+          strokeWidth={active ? 2.75 : 2}
+          aria-hidden="true"
+          className={active && bump ? 'anim-bump' : ''}
+        />
       </button>
     )
   }
@@ -74,13 +90,19 @@ export function VoteButton({
     <f.Form
       method="post"
       action="/actions/vote"
-      className={cx('flex items-center', layout === 'column' ? 'w-8 flex-col' : 'gap-1')}
+      className={cx(shell, layout === 'column' && shownVote === 1 && 'border-lapis/40 bg-lapis-soft')}
     >
       <FormFields />
       <input type="hidden" name="subject" value={subject} />
       <input type="hidden" name="id" value={id} />
       {btn(1)}
-      <span className="font-mono text-xs tabular-nums text-ink" aria-live="polite">
+      <span
+        className={cx(
+          'font-mono text-xs tabular-nums',
+          shownVote === 1 ? 'font-semibold text-lapis' : 'text-ink',
+        )}
+        aria-live="polite"
+      >
         {shownPoints}
       </span>
       {canDown && btn(-1)}

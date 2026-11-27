@@ -1,7 +1,7 @@
 // Server-only helpers for talking to the Go API. Every loader and action goes
 // through here, so cookies, CSRF and errors are handled in one place.
 import { type ApiClient, createClient, isApiError } from '@buildwith/api-client'
-import { data, redirect, type RouterContextProvider } from 'react-router'
+import { data, type RouterContextProvider, redirect } from 'react-router'
 import { type Viewer, viewerContext } from './session'
 
 export const API_ORIGIN = process.env.BUILDWITH_API_ORIGIN ?? 'http://localhost:8080'
@@ -13,7 +13,12 @@ export function viewer(context: Readonly<RouterContextProvider>): Viewer {
 /** A client that acts as the browser that made this request. */
 export function api(context: Readonly<RouterContextProvider>, csrf?: string): ApiClient {
   const v = viewer(context)
-  return createClient({ baseUrl: API_ORIGIN, cookie: v.cookie, csrf: csrf ?? v.csrf })
+  return createClient({
+    baseUrl: API_ORIGIN,
+    cookie: v.cookie,
+    csrf: csrf ?? v.csrf,
+    forwardedFor: v.forwardedFor,
+  })
 }
 
 /** Signed-in user or a redirect to /login that comes back here afterwards. */
@@ -32,7 +37,8 @@ export function orThrow<T>(res: { data?: T; error?: unknown; response: Response 
   const status = res.response.status
   if (status === 404) throw data({ code: 'not_found' }, { status: 404 })
   if (status === 401) throw data({ code: 'unauthorized' }, { status: 401 })
-  if (status === 403) throw data({ code: isApiError(res.error) ? res.error.code : 'forbidden' }, { status: 403 })
+  if (status === 403)
+    throw data({ code: isApiError(res.error) ? res.error.code : 'forbidden' }, { status: 403 })
   throw data({ code: isApiError(res.error) ? res.error.code : 'internal' }, { status: status || 500 })
 }
 
@@ -81,7 +87,7 @@ export function backTo(request: Request, fallback = '/'): string {
 }
 
 export function safePath(p: string | null | undefined, fallback = '/'): string {
-  if (!p || !p.startsWith('/') || p.startsWith('//') || p.startsWith('/\\')) return fallback
+  if (!p?.startsWith('/') || p.startsWith('//') || p.startsWith('/\\')) return fallback
   return p
 }
 

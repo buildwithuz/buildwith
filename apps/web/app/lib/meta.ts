@@ -4,7 +4,9 @@ import { display, type Script } from '@buildwith/translit'
 type Match = { id: string; loaderData?: unknown } | undefined
 
 function rootPrefs(matches: Match[]): { lang: Lang; script: Script } {
-  const root = matches.find((m) => m?.id === 'root')?.loaderData as { lang?: Lang; script?: Script } | undefined
+  const root = matches.find((m) => m?.id === 'root')?.loaderData as
+    | { lang?: Lang; script?: Script }
+    | undefined
   return { lang: root?.lang ?? 'uz', script: root?.script ?? 'latn' }
 }
 

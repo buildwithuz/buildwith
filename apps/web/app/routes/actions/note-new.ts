@@ -19,7 +19,9 @@ export async function action({ request, context }: Route.ActionArgs) {
   const res = await api(context, csrf).POST('/notes', { body })
   if (!res.data) {
     if (js) return actionError(res)
-    throw redirect(`${backTo(request, '/notes')}${backTo(request).includes('?') ? '&' : '?'}error=${actionError(res).error}`)
+    throw redirect(
+      `${backTo(request, '/notes')}${backTo(request).includes('?') ? '&' : '?'}error=${actionError(res).error}`,
+    )
   }
   if (js) return { ok: true, path: res.data.path }
   throw redirect(body.reply_to_id ? backTo(request, res.data.path) : res.data.path)

@@ -10,6 +10,8 @@ export async function action({ request, context }: Route.ActionArgs) {
   const res =
     value === 0
       ? await client.DELETE('/votes', { params: { query: { subject_type: subject, subject_id: id } } })
-      : await client.PUT('/votes', { body: { subject_type: subject, subject_id: id, value: value as 1 | -1 } })
+      : await client.PUT('/votes', {
+          body: { subject_type: subject, subject_id: id, value: value as 1 | -1 },
+        })
   return finish(request, js, res.data ?? actionError(res))
 }

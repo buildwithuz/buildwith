@@ -27,6 +27,10 @@ export function anonPrefs(request: Request): { lang: Lang; script: Script; theme
   }
 }
 
-export function prefCookie(name: 'bw_lang' | 'bw_script' | 'bw_theme', value: string, secure: boolean): string {
+export function prefCookie(
+  name: 'bw_lang' | 'bw_script' | 'bw_theme',
+  value: string,
+  secure: boolean,
+): string {
   return `${name}=${encodeURIComponent(value)}; Path=/; Max-Age=${YEAR}; SameSite=Lax${secure ? '; Secure' : ''}`
 }

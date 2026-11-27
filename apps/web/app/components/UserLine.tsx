@@ -5,8 +5,14 @@ import { ago, formatDate } from '../lib/time'
 
 export function UserAvatar({ user, size = 40 }: { user: User; size?: number }) {
   return (
-    <a href={`/@${user.username}`} className="shrink-0" tabIndex={-1} aria-hidden="true">
-      <Avatar name={user.display_name || user.username} src={user.avatar_url} size={size} accent={user.accent} />
+    <a href={`/@${user.username}`} className="shrink-0" tabIndex={-1}>
+      <span className="sr-only">@{user.username}</span>
+      <Avatar
+        name={user.display_name || user.username}
+        src={user.avatar_url}
+        size={size}
+        accent={user.accent}
+      />
     </a>
   )
 }
@@ -42,9 +48,11 @@ export function UserName({ user, at, href }: { user: User; at?: string; href?: s
 }
 
 export function TimeAgo({ iso, lang }: { iso: string; lang: Parameters<typeof ago>[1] }) {
+  const tx = useTx()
+  const ui = (s: string) => (lang === 'uz' ? tx.text(s) : s)
   return (
-    <time dateTime={iso} title={formatDate(iso, lang, true)} className="text-xs text-muted">
-      {ago(iso, lang)}
+    <time dateTime={iso} title={ui(formatDate(iso, lang, true))} className="text-xs text-muted">
+      {ui(ago(iso, lang))}
     </time>
   )
 }

@@ -10,6 +10,11 @@ export default defineConfig(({ mode }) => {
 
   return {
     plugins: [tailwindcss(), reactRouter()],
+    build: {
+      // Fonts stay real files: the CSP allows font-src 'self' only (no data:), and files cache better.
+      assetsInlineLimit: (file: string) =>
+        file.endsWith('.woff2') || file.endsWith('.woff') ? false : undefined,
+    },
     server: {
       port: Number(env.PORT || 5173),
       strictPort: true,

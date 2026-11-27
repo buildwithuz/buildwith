@@ -13,6 +13,8 @@ export interface Viewer {
   theme: Theme
   /** The browser's Cookie header, forwarded to the API on the server. */
   cookie: string | null
+  /** The X-Forwarded-For chain from the reverse proxy, passed on so the API sees the visitor's IP. */
+  forwardedFor: string | null
 }
 
 export const viewerContext = createContext<Viewer>()
