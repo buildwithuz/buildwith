@@ -18,7 +18,9 @@ Bug   ──►  Issue  ──────────────────�
 3. **Comment on the issue** to claim it ("I'll take this"). A maintainer assigns it. Unassigned work may be done twice.
 4. **Open a PR** that links the issue (`Closes #123`).
 5. **Review:** every PR needs an approval from a code owner and green CI. Nobody merges their own PR, maintainers included.
-6. **Merge:** squash merge only. The PR title becomes the commit message.
+   If you are not yet a buildwith collaborator, CI does not start by itself: a maintainer reads your PR first and then
+   approves the run. Please be patient; it saves CI time for changes that are going somewhere.
+6. **Merge:** a maintainer merges by hand, squash only; the PR title becomes the commit message. There is no auto-merge.
 
 ## What gets accepted
 
@@ -48,10 +50,11 @@ You may use AI tools (Claude Code, Cursor, Copilot…). The repo includes agent 
 You are responsible for every line: read it, understand it, test it. Tick the AI checkbox in the PR template.
 PRs that look unreviewed by their author (huge, unrelated changes, made-up APIs, failing tests) will be closed.
 
-## Trust labels
+## Trust
 
-New contributors' PRs get `vouch:new`. After a few good merged PRs, a maintainer adds you to `.github/VOUCHED`, and your PRs get `vouch:trusted`.
-This only helps reviewers prioritise; everyone's PRs get the same review rules.
+New contributors' PRs get `vouch:new`. After a few good merged PRs, a maintainer adds you to `.github/VOUCHED` (your PRs
+then get `vouch:trusted`) and as a repository collaborator, after which CI runs on your PRs without waiting for approval.
+Trust changes how fast CI starts, not the rules: everyone's PRs still need a code owner's review and a maintainer's merge.
 
 ## Reviews
 
