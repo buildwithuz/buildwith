@@ -186,6 +186,7 @@ services:
       - "443:443/udp" # HTTP/3
     environment:
       BUILDWITH_DOMAIN: ${BUILDWITH_DOMAIN:-buildwith.uz}
+      BUILDWITH_CADDYFILE: /etc/caddy/Caddyfile # deploy.sh reloads this one
     volumes:
       # The whole folder, not the file: git replaces files on checkout and a single-file
       # bind mount would keep pointing at the old one, so `caddy reload` would see stale config.

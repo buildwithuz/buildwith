@@ -1,0 +1,62 @@
+# Overlay for a server shared with other apps, behind a reverse proxy that already owns :80/:443.
+# lib.sh adds it when BUILDWITH_EDGE_NETWORK is set in .env.production:
+#   docker compose -f compose.prod.yml -f compose.shared.yml ...
+# The front proxy joins that Docker network and forwards https://buildwith.uz to buildwith-caddy:80
+# (TLS, www redirect and HTTP→HTTPS are its job). Limits are sized to leave room for the other apps.
+services:
+  db:
+    command:
+      - postgres
+      - -c
+      - shared_buffers=256MB
+      - -c
+      - effective_cache_size=1GB
+      - -c
+      - work_mem=8MB
+      - -c
+      - maintenance_work_mem=128MB
+      - -c
+      - max_connections=50
+      - -c
+      - random_page_cost=1.1
+      - -c
+      - log_min_duration_statement=500ms
+    shm_size: 256m
+    deploy:
+      resources:
+        limits: { cpus: "1.5", memory: 768m }
+
+  api:
+    deploy:
+      resources:
+        limits: { cpus: "1.5", memory: 512m }
+
+  worker:
+    deploy:
+      resources:
+        limits: { cpus: "1", memory: 384m }
+
+  web:
+    environment:
+      NODE_OPTIONS: --max-old-space-size=384
+    deploy:
+      resources:
+        limits: { cpus: "1.5", memory: 512m }
+
+  caddy:
+    ports: !reset []
+    command: ["caddy", "run", "--config", "/etc/caddy/Caddyfile.shared", "--adapter", "caddyfile"]
+    environment:
+      BUILDWITH_CADDYFILE: /etc/caddy/Caddyfile.shared
+    networks:
+      default: {}
+      edge:
+        aliases: [buildwith-caddy]
+    deploy:
+      resources:
+        limits: { cpus: "0.5", memory: 128m }
+
+networks:
+  edge:
+    name: ${BUILDWITH_EDGE_NETWORK:?set BUILDWITH_EDGE_NETWORK in .env.production}
+    external: true

@@ -35,7 +35,7 @@ jobs:
           envs: REF
           script: |
             set -euo pipefail
-            cd /srv/buildwith
+            cd "${{ vars.DEPLOY_PATH || '/srv/buildwith' }}"
             git fetch --tags --force
             git checkout --detach "$REF"
             ./deploy/deploy.sh   # backup db → build images → migrate → restart → health check → roll back on failure

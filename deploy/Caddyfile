@@ -1,4 +1,5 @@
-# buildwith.uz edge: TLS, security headers, /media from disk, /v1 to the API, the rest to web.
+# buildwith.uz on its own server: Caddy owns :80/:443 and gets certificates from Let's Encrypt.
+# The routes are in site.caddy; Caddyfile.shared is the variant for running behind another proxy.
 # BUILDWITH_DOMAIN comes from compose.prod.yml. No ACME email: Let's Encrypt doesn't
 # need one, and buildwith.uz has no mailbox (support is the Telegram bot).
 {
@@ -11,22 +12,7 @@
 	}
 }
 
-(security_headers) {
-	header {
-		Strict-Transport-Security "max-age=31536000; includeSubDomains"
-		X-Content-Type-Options "nosniff"
-		Referrer-Policy "strict-origin-when-cross-origin"
-		X-Frame-Options "DENY"
-		Cross-Origin-Opener-Policy "same-origin"
-		Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=(), usb=(), browsing-topics=()"
-		-Server
-		# Default policy, used unless the upstream sends its own ("?" = only if absent).
-		# React Router's <Scripts>/<ScrollRestoration> emit per-request inline scripts, so script-src
-		# needs 'unsafe-inline' until web sends a nonce-based policy itself (browsers ignore
-		# 'unsafe-inline' once a nonce is present). Inline style *attributes* come from React/Radix.
-		?Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' https://telegram.org; style-src 'self'; style-src-attr 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-src https://oauth.telegram.org; frame-ancestors 'none'; form-action 'self' https://github.com https://accounts.google.com https://oauth.telegram.org; base-uri 'self'; object-src 'none'; manifest-src 'self'; worker-src 'self'; upgrade-insecure-requests"
-	}
-}
+import site.caddy
 
 www.{$BUILDWITH_DOMAIN} {
 	import security_headers
@@ -34,66 +20,5 @@ www.{$BUILDWITH_DOMAIN} {
 }
 
 {$BUILDWITH_DOMAIN} {
-	import security_headers
-
-	# A bit above the API's own 12 MiB cap so the API answers with its own error.
-	request_body {
-		max_size 13MiB
-	}
-
-	# Media names are content hashes, so they never change. Uploads are re-encoded images,
-	# but sandbox them anyway in case a file is ever opened directly.
-	handle_path /media/* {
-		root * /srv/media
-		header {
-			Cache-Control "public, max-age=31536000, immutable"
-			Content-Security-Policy "default-src 'none'; img-src 'self'; style-src 'unsafe-inline'; sandbox"
-			Cross-Origin-Resource-Policy "same-origin"
-		}
-		file_server
-	}
-
-	handle /v1/* {
-		encode {
-			zstd
-			gzip
-			# Never compress the event stream: compressors buffer and break SSE.
-			match {
-				header Content-Type application/json*
-				header Content-Type application/rss+xml*
-				header Content-Type application/atom+xml*
-			}
-		}
-		reverse_proxy api:8080 {
-			# Pass SSE (/v1/notifications/stream) through unbuffered.
-			flush_interval -1
-		}
-	}
-
-	handle {
-		encode {
-			zstd
-			gzip
-			match {
-				header Content-Type text/html*
-				header Content-Type text/css*
-				header Content-Type text/plain*
-				header Content-Type text/javascript*
-				header Content-Type application/javascript*
-				header Content-Type application/json*
-				header Content-Type application/manifest+json*
-				header Content-Type application/xml*
-				header Content-Type application/rss+xml*
-				header Content-Type application/atom+xml*
-				header Content-Type image/svg+xml*
-			}
-		}
-		# react-router-serve already marks hashed /assets/* immutable.
-		reverse_proxy web:3000
-	}
-
-	log {
-		output stdout
-		format json
-	}
+	import buildwith_site
 }

@@ -1,0 +1,25 @@
+# buildwith.uz on a server shared with other apps: another reverse proxy owns :80/:443 and
+# terminates TLS, then forwards to this Caddy over plain HTTP on a Docker network
+# (compose.shared.yml). Caddy still does the routing in site.caddy, so both setups serve the same thing.
+# The front proxy redirects www to the bare domain.
+{
+	auto_https off
+	servers {
+		# The front proxy is the only peer that can reach us, and it is on a private Docker network.
+		# Strict = read X-Forwarded-For from the right, so a visitor can't pick their own address.
+		trusted_proxies static private_ranges
+		trusted_proxies_strict
+		client_ip_headers X-Forwarded-For
+		timeouts {
+			read_header 10s
+			idle 2m
+		}
+	}
+}
+
+import site.caddy
+
+# Any host: the front proxy decides which names reach us (e.g. a temporary preview name).
+:80 {
+	import buildwith_site
+}
