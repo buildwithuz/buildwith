@@ -242,6 +242,20 @@
     "title": "Moderation",
     "unkill": "Restore"
   },
+  "month": {
+    "1": "Jan",
+    "10": "Oct",
+    "11": "Nov",
+    "12": "Dec",
+    "2": "Feb",
+    "3": "Mar",
+    "4": "Apr",
+    "5": "May",
+    "6": "Jun",
+    "7": "Jul",
+    "8": "Aug",
+    "9": "Sep"
+  },
   "monthly": {
     "building": "What are you building? ({month})",
     "building_body": "What are you working on this month? Show your project in a few words.",
