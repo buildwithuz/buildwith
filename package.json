@@ -3,7 +3,9 @@
   "private": true,
   "type": "module",
   "packageManager": "pnpm@10.18.2",
-  "engines": { "node": ">=24" },
+  "engines": {
+    "node": ">=24"
+  },
   "scripts": {
     "setup:dev": "bash scripts/setup-dev.sh",
     "dev": "turbo run dev --parallel",
@@ -23,10 +25,11 @@
     "db:seed": "cd apps/api && go run ./cmd/seed"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.3.14",
-    "@playwright/test": "1.57.1",
-    "turbo": "2.6.2",
-    "typescript": "5.9.4",
-    "vitest": "3.2.4"
+    "@biomejs/biome": "2.6.9",
+    "@playwright/test": "1.65.1",
+    "@types/node": "26.6.11",
+    "turbo": "2.11.13",
+    "typescript": "7.0.2",
+    "vitest": "5.1.2"
   }
 }

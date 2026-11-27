@@ -1,0 +1,2407 @@
+openapi: 3.1.0
+
+info:
+  title: buildwith.uz API
+  version: 0.1.0
+  description: |
+    The single source of truth for the buildwith.uz HTTP API. Go server interfaces and
+    the TypeScript client are both generated from this file by `pnpm gen`; CI fails if
+    the generated code is stale.
+
+    Conventions
+      * Lists are keyset paginated: `?cursor=&limit=` returns `{ items, nextCursor }`.
+        A `nextCursor` of `null` means the end. Never offset pagination.
+      * Mutations need the session cookie **and** the `X-CSRF-Token` header.
+      * Errors are always `Error { code, message, field? }` with a code from one enum.
+      * Times are RFC 3339 in UTC.
+  license:
+    name: AGPL-3.0-or-later
+    identifier: AGPL-3.0-or-later
+
+servers:
+  - url: /v1
+
+tags:
+  - { name: health }
+  - { name: auth }
+  - { name: users }
+  - { name: social }
+  - { name: media }
+  - { name: tags }
+  - { name: links }
+  - { name: comments }
+  - { name: votes }
+  - { name: notes }
+  - { name: articles }
+  - { name: timeline }
+  - { name: notify }
+  - { name: search }
+  - { name: mod }
+
+security:
+  - session: []
+
+paths:
+  /health:
+    get:
+      operationId: getHealth
+      tags: [health]
+      summary: Liveness and readiness
+      security: []
+      responses:
+        "200":
+          description: The service and its database are reachable.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Health" }
+        "503":
+          $ref: "#/components/responses/Unavailable"
+
+  /auth/me:
+    get:
+      operationId: getSession
+      tags: [auth]
+      summary: The signed-in user and a fresh CSRF token
+      security: []
+      responses:
+        "200":
+          description: Session state. `user` is null when nobody is signed in.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SessionInfo" }
+
+  /auth/dev-login:
+    post:
+      operationId: devLogin
+      tags: [auth]
+      summary: Sign in as a seeded user (development builds only)
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [username]
+              properties:
+                username: { type: string, maxLength: 30 }
+      responses:
+        "200":
+          description: Signed in.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SessionInfo" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /auth/{provider}/start:
+    get:
+      operationId: startOAuth
+      tags: [auth]
+      summary: Begin an OAuth sign-in
+      security: []
+      parameters:
+        - { name: provider, in: path, required: true, schema: { $ref: "#/components/schemas/OAuthProvider" } }
+        - { name: redirect_to, in: query, schema: { type: string, maxLength: 300 } }
+      responses:
+        "303":
+          description: Redirect to the provider.
+          headers:
+            Location: { schema: { type: string } }
+        "501":
+          $ref: "#/components/responses/NotConfigured"
+
+  /auth/{provider}/callback:
+    get:
+      operationId: finishOAuth
+      tags: [auth]
+      summary: Finish an OAuth sign-in
+      security: []
+      parameters:
+        - { name: provider, in: path, required: true, schema: { $ref: "#/components/schemas/OAuthProvider" } }
+        - { name: code, in: query, required: true, schema: { type: string } }
+        - { name: state, in: query, required: true, schema: { type: string } }
+      responses:
+        "303":
+          description: Signed in; redirect into the app (or to username selection).
+          headers:
+            Location: { schema: { type: string } }
+            Set-Cookie: { schema: { type: string } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+
+  /auth/telegram:
+    post:
+      operationId: telegramLogin
+      tags: [auth]
+      summary: Sign in with the Telegram login widget
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/TelegramAuth" }
+      responses:
+        "200":
+          description: Signed in.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SessionInfo" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "501": { $ref: "#/components/responses/NotConfigured" }
+
+  /auth/username:
+    post:
+      operationId: chooseUsername
+      tags: [auth]
+      summary: Claim a username right after the first sign-in
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [username]
+              properties:
+                username:
+                  type: string
+                  pattern: "^[A-Za-z0-9][A-Za-z0-9_-]{1,29}$"
+      responses:
+        "200":
+          description: Username claimed.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/User" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/Invalid" }
+
+  /auth/logout:
+    post:
+      operationId: logout
+      tags: [auth]
+      summary: Sign out
+      responses:
+        "204": { description: Signed out. }
+
+  /users/{username}:
+    get:
+      operationId: getProfile
+      tags: [users]
+      summary: A full profile page
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/Username"
+      responses:
+        "200":
+          description: The profile.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Profile" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /users/me:
+    patch:
+      operationId: updateMe
+      tags: [users]
+      summary: Edit your own profile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ProfileEdit" }
+      responses:
+        "200":
+          description: Updated.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/User" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "422": { $ref: "#/components/responses/Invalid" }
+    delete:
+      operationId: deleteMe
+      tags: [users]
+      summary: Delete your account
+      description: |
+        Removes every piece of personal data and anonymizes authorship so existing
+        threads keep their shape. Irreversible.
+      responses:
+        "204": { description: Deleted. }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /users/me/preferences:
+    patch:
+      operationId: updatePreferences
+      tags: [users]
+      summary: Language, script and theme
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                lang: { $ref: "#/components/schemas/Lang" }
+                script: { $ref: "#/components/schemas/Script" }
+                theme: { $ref: "#/components/schemas/Theme" }
+      responses:
+        "200":
+          description: Updated.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/User" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /users/me/readme:
+    put:
+      operationId: updateReadme
+      tags: [users]
+      summary: Replace your profile README
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [body_md]
+              properties:
+                body_md: { type: string, maxLength: 20000 }
+      responses:
+        "200":
+          description: Updated; returns the rendered HTML.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [body_html]
+                properties:
+                  body_html: { type: string }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /users/me/avatar:
+    put:
+      operationId: setAvatar
+      tags: [users]
+      summary: Set or clear your avatar
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                media_id: { type: integer, format: int64, nullable: true }
+      responses:
+        "204": { description: Updated. }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /users/me/banner:
+    put:
+      operationId: setBanner
+      tags: [users]
+      summary: Set or clear your profile banner
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                media_id: { type: integer, format: int64, nullable: true }
+      responses:
+        "204": { description: Updated. }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /users/me/repos/refresh:
+    post:
+      operationId: refreshRepos
+      tags: [users]
+      summary: Re-fetch your pinned GitHub repositories
+      responses:
+        "200":
+          description: The refreshed list.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items: { type: array, items: { $ref: "#/components/schemas/Repo" } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /users/me/export:
+    get:
+      operationId: exportMe
+      tags: [users]
+      summary: Download everything you have written
+      description: A zip of JSON plus Markdown, built on the fly.
+      responses:
+        "200":
+          description: The archive.
+          content:
+            application/zip:
+              schema: { type: string, format: binary }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /users/{username}/heatmap:
+    get:
+      operationId: getHeatmap
+      tags: [users]
+      summary: Twelve months of daily activity counts
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/Username"
+      responses:
+        "200":
+          description: One entry per active day.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      required: [day, count]
+                      properties:
+                        day: { type: string, format: date }
+                        count: { type: integer }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /users/{username}/followers:
+    get:
+      operationId: listFollowers
+      tags: [social]
+      summary: Who follows this user
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/Username"
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200": { $ref: "#/components/responses/UserPage" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /users/{username}/following:
+    get:
+      operationId: listFollowing
+      tags: [social]
+      summary: Who this user follows
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/Username"
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200": { $ref: "#/components/responses/UserPage" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /users/{username}/follow:
+    post:
+      operationId: followUser
+      tags: [social]
+      summary: Follow a user
+      parameters: [{ $ref: "#/components/parameters/Username" }]
+      responses:
+        "200": { $ref: "#/components/responses/Relation" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    delete:
+      operationId: unfollowUser
+      tags: [social]
+      summary: Unfollow a user
+      parameters: [{ $ref: "#/components/parameters/Username" }]
+      responses:
+        "200": { $ref: "#/components/responses/Relation" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /users/{username}/block:
+    post:
+      operationId: blockUser
+      tags: [social]
+      summary: Block a user
+      description: Blocking is mutual invisibility and forbids interaction in both directions.
+      parameters: [{ $ref: "#/components/parameters/Username" }]
+      responses:
+        "200": { $ref: "#/components/responses/Relation" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+    delete:
+      operationId: unblockUser
+      tags: [social]
+      summary: Unblock a user
+      parameters: [{ $ref: "#/components/parameters/Username" }]
+      responses:
+        "200": { $ref: "#/components/responses/Relation" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /users/{username}/mute:
+    post:
+      operationId: muteUser
+      tags: [social]
+      summary: Mute a user
+      description: Muting hides their content from you only; they are not told.
+      parameters: [{ $ref: "#/components/parameters/Username" }]
+      responses:
+        "200": { $ref: "#/components/responses/Relation" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+    delete:
+      operationId: unmuteUser
+      tags: [social]
+      summary: Unmute a user
+      parameters: [{ $ref: "#/components/parameters/Username" }]
+      responses:
+        "200": { $ref: "#/components/responses/Relation" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /me/muted-words:
+    get:
+      operationId: listMutedWords
+      tags: [social]
+      summary: Your muted words
+      responses:
+        "200":
+          description: The list.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      required: [id, word]
+                      properties:
+                        id: { type: integer, format: int64 }
+                        word: { type: string }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+    post:
+      operationId: addMutedWord
+      tags: [social]
+      summary: Mute a word
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [word]
+              properties:
+                word: { type: string, minLength: 2, maxLength: 40 }
+      responses:
+        "204": { description: Muted. }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "422": { $ref: "#/components/responses/Invalid" }
+
+  /me/muted-words/{id}:
+    delete:
+      operationId: removeMutedWord
+      tags: [social]
+      summary: Unmute a word
+      parameters: [{ $ref: "#/components/parameters/ID" }]
+      responses:
+        "204": { description: Unmuted. }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /who-to-follow:
+    get:
+      operationId: whoToFollow
+      tags: [social]
+      summary: People followed by the people you follow
+      parameters: [{ $ref: "#/components/parameters/Limit" }]
+      responses:
+        "200":
+          description: Suggestions, most mutual follows first.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      required: [user, mutuals]
+                      properties:
+                        user: { $ref: "#/components/schemas/User" }
+                        mutuals: { type: integer }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /open-to-work:
+    get:
+      operationId: listOpenToWork
+      tags: [users]
+      summary: Engineers who marked themselves open to work
+      security: []
+      parameters: [{ $ref: "#/components/parameters/Limit" }]
+      responses:
+        "200": { $ref: "#/components/responses/UserPage" }
+
+  /media:
+    post:
+      operationId: uploadMedia
+      tags: [media]
+      summary: Upload an image
+      description: |
+        Every upload is decoded, stripped of metadata and re-encoded before it is
+        stored, so a malicious file never reaches a reader.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [kind, file]
+              properties:
+                kind: { $ref: "#/components/schemas/MediaKind" }
+                file: { type: string, format: binary }
+      responses:
+        "201":
+          description: Stored.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Media" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "413":
+          description: The file is larger than the limit for its kind.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "422": { $ref: "#/components/responses/Invalid" }
+        "429": { $ref: "#/components/responses/TooMany" }
+
+  /tags:
+    get:
+      operationId: listTags
+      tags: [tags]
+      summary: Most used tags, or tags matching a query
+      security: []
+      parameters:
+        - { name: q, in: query, schema: { type: string, maxLength: 30 } }
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: Tags.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items: { type: array, items: { $ref: "#/components/schemas/Tag" } }
+
+  /tags/{slug}:
+    get:
+      operationId: getTag
+      tags: [tags]
+      summary: One tag, with whether you follow it
+      security: []
+      parameters: [{ $ref: "#/components/parameters/Slug" }]
+      responses:
+        "200":
+          description: The tag.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Tag" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /tags/{slug}/follow:
+    post:
+      operationId: followTag
+      tags: [tags]
+      summary: Follow a tag
+      parameters: [{ $ref: "#/components/parameters/Slug" }]
+      responses:
+        "200":
+          description: Following.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Tag" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    delete:
+      operationId: unfollowTag
+      tags: [tags]
+      summary: Unfollow a tag
+      parameters: [{ $ref: "#/components/parameters/Slug" }]
+      responses:
+        "200":
+          description: Not following.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Tag" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /links:
+    get:
+      operationId: listLinks
+      tags: [links]
+      summary: The ranked lists — Top, New, Best, Savol, Koʻrsat, by tag, by domain
+      security: []
+      parameters:
+        - { name: sort, in: query, schema: { $ref: "#/components/schemas/LinkSort" } }
+        - { name: kind, in: query, schema: { $ref: "#/components/schemas/LinkKind" } }
+        - { name: tag, in: query, schema: { type: string, maxLength: 30 } }
+        - { name: domain, in: query, schema: { type: string, maxLength: 253 } }
+        - { name: author, in: query, schema: { type: string, maxLength: 30 } }
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: A page of link posts.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LinkPage" }
+    post:
+      operationId: createLink
+      tags: [links]
+      summary: Submit a link, text post, Savol or Koʻrsat
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/LinkNew" }
+      responses:
+        "201":
+          description: Created.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Link" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "409":
+          description: The same URL was submitted recently; the existing post is returned.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [error, existing]
+                properties:
+                  error: { $ref: "#/components/schemas/Error" }
+                  existing: { $ref: "#/components/schemas/Link" }
+        "422": { $ref: "#/components/responses/Invalid" }
+        "429": { $ref: "#/components/responses/TooMany" }
+
+  /links/{id}:
+    get:
+      operationId: getLink
+      tags: [links]
+      summary: One link post
+      security: []
+      parameters: [{ $ref: "#/components/parameters/ID" }]
+      responses:
+        "200":
+          description: The post.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Link" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    patch:
+      operationId: updateLink
+      tags: [links]
+      summary: Edit your own post (within the edit window)
+      parameters: [{ $ref: "#/components/parameters/ID" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title: { type: string, minLength: 3, maxLength: 100 }
+                body_md: { type: string, maxLength: 20000 }
+      responses:
+        "200":
+          description: Updated.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Link" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    delete:
+      operationId: deleteLink
+      tags: [links]
+      summary: Delete your own post
+      parameters: [{ $ref: "#/components/parameters/ID" }]
+      responses:
+        "204": { description: Deleted. }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  /links/{id}/promote-note:
+    post:
+      operationId: promoteNote
+      tags: [links]
+      summary: Turn one of your notes into a link post
+      parameters: [{ $ref: "#/components/parameters/ID" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [title]
+              properties:
+                title: { type: string, minLength: 3, maxLength: 100 }
+                tags: { type: array, maxItems: 3, items: { type: string, maxLength: 30 } }
+      responses:
+        "201":
+          description: The new link post.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Link" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+
+  /comments:
+    get:
+      operationId: listComments
+      tags: [comments]
+      summary: The whole comment thread for one link or article
+      security: []
+      parameters:
+        - { name: subject_type, in: query, required: true, schema: { $ref: "#/components/schemas/CommentSubject" } }
+        - { name: subject_id, in: query, required: true, schema: { type: integer, format: int64 } }
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: Comments in thread order; nest them by `depth`.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items: { type: array, items: { $ref: "#/components/schemas/Comment" } }
+    post:
+      operationId: createComment
+      tags: [comments]
+      summary: Comment, or reply to a comment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [subject_type, subject_id, body_md]
+              properties:
+                subject_type: { $ref: "#/components/schemas/CommentSubject" }
+                subject_id: { type: integer, format: int64 }
+                parent_id: { type: integer, format: int64, nullable: true }
+                body_md: { type: string, minLength: 1, maxLength: 10000 }
+      responses:
+        "201":
+          description: Created.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Comment" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/Invalid" }
+        "429": { $ref: "#/components/responses/TooMany" }
+
+  /comments/{id}:
+    patch:
+      operationId: updateComment
+      tags: [comments]
+      summary: Edit your own comment (within the edit window)
+      parameters: [{ $ref: "#/components/parameters/ID" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [body_md]
+              properties:
+                body_md: { type: string, minLength: 1, maxLength: 10000 }
+      responses:
+        "200":
+          description: Updated.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Comment" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+    delete:
+      operationId: deleteComment
+      tags: [comments]
+      summary: Delete your own comment
+      parameters: [{ $ref: "#/components/parameters/ID" }]
+      responses:
+        "204": { description: Deleted. }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  /votes:
+    put:
+      operationId: castVote
+      tags: [votes]
+      summary: Upvote, or downvote a comment
+      description: Downvoting comments needs 100 karma; links and articles cannot be downvoted.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [subject_type, subject_id, value]
+              properties:
+                subject_type: { $ref: "#/components/schemas/VoteSubject" }
+                subject_id: { type: integer, format: int64 }
+                value: { type: integer, enum: [-1, 1] }
+      responses:
+        "200": { $ref: "#/components/responses/VoteState" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+    delete:
+      operationId: clearVote
+      tags: [votes]
+      summary: Take your vote back
+      parameters:
+        - { name: subject_type, in: query, required: true, schema: { $ref: "#/components/schemas/VoteSubject" } }
+        - { name: subject_id, in: query, required: true, schema: { type: integer, format: int64 } }
+      responses:
+        "200": { $ref: "#/components/responses/VoteState" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /flags:
+    post:
+      operationId: addFlag
+      tags: [votes]
+      summary: Flag something as not belonging here
+      description: Flagging needs 30 karma. Six trusted flags hide an item pending review.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [subject_type, subject_id]
+              properties:
+                subject_type: { $ref: "#/components/schemas/FlagSubject" }
+                subject_id: { type: integer, format: int64 }
+      responses:
+        "204": { description: Flagged. }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+    delete:
+      operationId: removeFlag
+      tags: [votes]
+      summary: Take your flag back
+      parameters:
+        - { name: subject_type, in: query, required: true, schema: { $ref: "#/components/schemas/FlagSubject" } }
+        - { name: subject_id, in: query, required: true, schema: { type: integer, format: int64 } }
+      responses:
+        "204": { description: Unflagged. }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /notes:
+    get:
+      operationId: listNotes
+      tags: [notes]
+      summary: Latest notes, or one person's notes
+      security: []
+      parameters:
+        - { name: author, in: query, schema: { type: string, maxLength: 30 } }
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: A page of notes.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/NotePage" }
+    post:
+      operationId: createNote
+      tags: [notes]
+      summary: Post a note, reply, quote or repost
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/NoteNew" }
+      responses:
+        "201":
+          description: Created.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Note" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/Invalid" }
+        "429": { $ref: "#/components/responses/TooMany" }
+
+  /notes/popular:
+    get:
+      operationId: listPopularNotes
+      tags: [notes]
+      summary: Notes with enough traction today for the "Popular notes" box
+      security: []
+      parameters: [{ $ref: "#/components/parameters/Limit" }]
+      responses:
+        "200":
+          description: A page of notes.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/NotePage" }
+
+  /notes/{id}:
+    get:
+      operationId: getNote
+      tags: [notes]
+      summary: One note
+      security: []
+      parameters: [{ $ref: "#/components/parameters/ID" }]
+      responses:
+        "200":
+          description: The note.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Note" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    patch:
+      operationId: updateNote
+      tags: [notes]
+      summary: Edit your own note (15 minutes, history kept)
+      parameters: [{ $ref: "#/components/parameters/ID" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [body_md]
+              properties:
+                body_md: { type: string, maxLength: 2000 }
+      responses:
+        "200":
+          description: Updated.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Note" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+    delete:
+      operationId: deleteNote
+      tags: [notes]
+      summary: Delete your own note
+      parameters: [{ $ref: "#/components/parameters/ID" }]
+      responses:
+        "204": { description: Deleted. }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  /notes/{id}/thread:
+    get:
+      operationId: getNoteThread
+      tags: [notes]
+      summary: A note with its ancestors and its replies
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/ID"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: The thread.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [note, ancestors, replies]
+                properties:
+                  note: { $ref: "#/components/schemas/Note" }
+                  ancestors: { type: array, items: { $ref: "#/components/schemas/Note" } }
+                  replies: { type: array, items: { $ref: "#/components/schemas/Note" } }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /notes/{id}/edits:
+    get:
+      operationId: listNoteEdits
+      tags: [notes]
+      summary: A note's edit history
+      security: []
+      parameters: [{ $ref: "#/components/parameters/ID" }]
+      responses:
+        "200":
+          description: Earlier versions, newest first.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      required: [body_md, created_at]
+                      properties:
+                        body_md: { type: string }
+                        created_at: { type: string, format: date-time }
+
+  /notes/{id}/like:
+    post:
+      operationId: likeNote
+      tags: [notes]
+      summary: Like a note
+      parameters: [{ $ref: "#/components/parameters/ID" }]
+      responses:
+        "200": { $ref: "#/components/responses/NoteState" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+    delete:
+      operationId: unlikeNote
+      tags: [notes]
+      summary: Unlike a note
+      parameters: [{ $ref: "#/components/parameters/ID" }]
+      responses:
+        "200": { $ref: "#/components/responses/NoteState" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /notes/{id}/repost:
+    post:
+      operationId: repostNote
+      tags: [notes]
+      summary: Repost a note
+      parameters: [{ $ref: "#/components/parameters/ID" }]
+      responses:
+        "200": { $ref: "#/components/responses/NoteState" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+    delete:
+      operationId: unrepostNote
+      tags: [notes]
+      summary: Undo a repost
+      parameters: [{ $ref: "#/components/parameters/ID" }]
+      responses:
+        "200": { $ref: "#/components/responses/NoteState" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /notes/{id}/bookmark:
+    post:
+      operationId: bookmarkNote
+      tags: [notes]
+      summary: Bookmark a note
+      parameters: [{ $ref: "#/components/parameters/ID" }]
+      responses:
+        "200": { $ref: "#/components/responses/NoteState" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+    delete:
+      operationId: unbookmarkNote
+      tags: [notes]
+      summary: Remove a bookmark
+      parameters: [{ $ref: "#/components/parameters/ID" }]
+      responses:
+        "200": { $ref: "#/components/responses/NoteState" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /me/bookmarks:
+    get:
+      operationId: listBookmarks
+      tags: [notes]
+      summary: Your bookmarked notes
+      parameters:
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: A page of notes.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/NotePage" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /articles:
+    get:
+      operationId: listArticles
+      tags: [articles]
+      summary: Featured, popular this week, latest, by tag, by author, by series
+      security: []
+      parameters:
+        - { name: sort, in: query, schema: { $ref: "#/components/schemas/ArticleSort" } }
+        - { name: tag, in: query, schema: { type: string, maxLength: 30 } }
+        - { name: author, in: query, schema: { type: string, maxLength: 30 } }
+        - { name: series_id, in: query, schema: { type: integer, format: int64 } }
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: A page of articles.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ArticlePage" }
+    post:
+      operationId: createArticle
+      tags: [articles]
+      summary: Start a draft
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title: { type: string, maxLength: 140 }
+      responses:
+        "201":
+          description: The new draft.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Article" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "429": { $ref: "#/components/responses/TooMany" }
+
+  /articles/mine:
+    get:
+      operationId: listMyArticles
+      tags: [articles]
+      summary: Your own articles, drafts included
+      parameters:
+        - { name: status, in: query, schema: { $ref: "#/components/schemas/ArticleStatus" } }
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: A page of articles.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ArticlePage" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /articles/by-slug:
+    get:
+      operationId: getArticleBySlug
+      tags: [articles]
+      summary: One article by author and slug — the reading page URL
+      security: []
+      parameters:
+        - { name: author, in: query, required: true, schema: { type: string, maxLength: 30 } }
+        - { name: slug, in: query, required: true, schema: { type: string, maxLength: 120 } }
+      responses:
+        "200":
+          description: The article.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Article" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /articles/{id}:
+    get:
+      operationId: getArticle
+      tags: [articles]
+      summary: One article by id (drafts only for their author)
+      security: []
+      parameters: [{ $ref: "#/components/parameters/ID" }]
+      responses:
+        "200":
+          description: The article.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Article" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    put:
+      operationId: saveArticle
+      tags: [articles]
+      summary: Save a draft (autosave calls this)
+      parameters: [{ $ref: "#/components/parameters/ID" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ArticleEdit" }
+      responses:
+        "200":
+          description: Saved.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Article" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/Invalid" }
+    delete:
+      operationId: deleteArticle
+      tags: [articles]
+      summary: Delete your own article
+      parameters: [{ $ref: "#/components/parameters/ID" }]
+      responses:
+        "204": { description: Deleted. }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  /articles/{id}/publish:
+    post:
+      operationId: publishArticle
+      tags: [articles]
+      summary: Publish now, or schedule for later
+      parameters: [{ $ref: "#/components/parameters/ID" }]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                at: { type: string, format: date-time, nullable: true }
+      responses:
+        "200":
+          description: Published or scheduled.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Article" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/Invalid" }
+
+  /articles/{id}/unpublish:
+    post:
+      operationId: unpublishArticle
+      tags: [articles]
+      summary: Move an article back to drafts
+      parameters: [{ $ref: "#/components/parameters/ID" }]
+      responses:
+        "200":
+          description: Back in drafts.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Article" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  /articles/{id}/versions:
+    get:
+      operationId: listArticleVersions
+      tags: [articles]
+      summary: Saved versions of your draft
+      parameters: [{ $ref: "#/components/parameters/ID" }]
+      responses:
+        "200":
+          description: Versions, newest first.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items: { type: array, items: { $ref: "#/components/schemas/ArticleVersion" } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  /articles/{id}/versions/{n}:
+    get:
+      operationId: getArticleVersion
+      tags: [articles]
+      summary: One saved version, with its Markdown
+      parameters:
+        - $ref: "#/components/parameters/ID"
+        - { name: n, in: path, required: true, schema: { type: integer } }
+      responses:
+        "200":
+          description: The version.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ArticleVersion"
+                  - type: object
+                    required: [body_md]
+                    properties:
+                      body_md: { type: string }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /series:
+    get:
+      operationId: listSeries
+      tags: [articles]
+      summary: One author's series
+      security: []
+      parameters:
+        - { name: author, in: query, required: true, schema: { type: string, maxLength: 30 } }
+      responses:
+        "200":
+          description: The series.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items: { type: array, items: { $ref: "#/components/schemas/Series" } }
+    post:
+      operationId: createSeries
+      tags: [articles]
+      summary: Create a series
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [title]
+              properties:
+                title: { type: string, minLength: 3, maxLength: 120 }
+                description: { type: string, maxLength: 400 }
+      responses:
+        "201":
+          description: Created.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Series" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "422": { $ref: "#/components/responses/Invalid" }
+
+  /timeline:
+    get:
+      operationId: getTimeline
+      tags: [timeline]
+      summary: Your chronological Following feed
+      description: Links, notes and articles from the people and tags you follow. No ranking.
+      parameters:
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: A page of mixed items.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FeedPage" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /timeline/count:
+    get:
+      operationId: countTimelineSince
+      tags: [timeline]
+      summary: How many timeline items are newer than a point in time
+      parameters:
+        - { name: since, in: query, required: true, schema: { type: string, format: date-time } }
+      responses:
+        "200":
+          description: The count, for the "N new" pill.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [count]
+                properties:
+                  count: { type: integer }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /notifications:
+    get:
+      operationId: listNotifications
+      tags: [notify]
+      summary: Your notifications
+      parameters:
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: A page of notifications.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/NotificationPage" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /notifications/count:
+    get:
+      operationId: countUnread
+      tags: [notify]
+      summary: How many notifications you have not read
+      responses:
+        "200":
+          description: The count.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [count]
+                properties:
+                  count: { type: integer }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /notifications/read:
+    post:
+      operationId: markNotificationsRead
+      tags: [notify]
+      summary: Mark all, or one, as read
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                id: { type: integer, format: int64, nullable: true }
+      responses:
+        "204": { description: Marked. }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /notifications/stream:
+    get:
+      operationId: streamNotifications
+      tags: [notify]
+      summary: Server-sent events with the unread count
+      description: |
+        A `text/event-stream` that sends an `unread` event whenever the count changes,
+        and a comment line every 25 seconds to keep the connection open.
+      responses:
+        "200":
+          description: The event stream.
+          content:
+            text/event-stream:
+              schema: { type: string }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /search:
+    get:
+      operationId: search
+      tags: [search]
+      summary: Search links, notes, articles, comments and people
+      security: []
+      parameters:
+        - { name: q, in: query, required: true, schema: { type: string, minLength: 2, maxLength: 120 } }
+        - { name: kind, in: query, schema: { $ref: "#/components/schemas/SearchKind" } }
+        - { name: offset, in: query, schema: { type: integer, minimum: 0, maximum: 1000, default: 0 } }
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: Matches, best first.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SearchResults" }
+
+  /reports:
+    post:
+      operationId: createReport
+      tags: [mod]
+      summary: Report anything to the moderators
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [subject_type, subject_id, reason]
+              properties:
+                subject_type: { $ref: "#/components/schemas/ReportSubject" }
+                subject_id: { type: integer, format: int64 }
+                reason: { $ref: "#/components/schemas/ReportReason" }
+                note: { type: string, maxLength: 1000 }
+      responses:
+        "204": { description: Reported. }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "422": { $ref: "#/components/responses/Invalid" }
+
+  /modlog:
+    get:
+      operationId: listModLog
+      tags: [mod]
+      summary: The public moderation log
+      description: Every moderator action, visible to everyone.
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: A page of actions.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ModLogPage" }
+
+  /moderators:
+    get:
+      operationId: listModerators
+      tags: [mod]
+      summary: Who the moderators are
+      security: []
+      responses:
+        "200": { $ref: "#/components/responses/UserPage" }
+
+  /mod/reports:
+    get:
+      operationId: listOpenReports
+      tags: [mod]
+      summary: The review queue (moderators only)
+      parameters: [{ $ref: "#/components/parameters/Limit" }]
+      responses:
+        "200":
+          description: Open reports, oldest first.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items, open_count]
+                properties:
+                  open_count: { type: integer }
+                  items: { type: array, items: { $ref: "#/components/schemas/Report" } }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  /mod/reports/{id}:
+    post:
+      operationId: resolveReport
+      tags: [mod]
+      summary: Action or dismiss a report (moderators only)
+      parameters: [{ $ref: "#/components/parameters/ID" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status: { type: string, enum: [actioned, dismissed] }
+                reason: { type: string, maxLength: 500 }
+      responses:
+        "204": { description: Resolved. }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  /mod/kill:
+    post:
+      operationId: killContent
+      tags: [mod]
+      summary: Hide or restore a post, comment or note (moderators only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [subject_type, subject_id, killed, reason]
+              properties:
+                subject_type: { $ref: "#/components/schemas/FlagSubject" }
+                subject_id: { type: integer, format: int64 }
+                killed: { type: boolean }
+                reason: { type: string, minLength: 3, maxLength: 500 }
+      responses:
+        "204": { description: Done, and written to the public log. }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  /mod/ban:
+    post:
+      operationId: banUser
+      tags: [mod]
+      summary: Ban or unban an account (moderators only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [username, banned, reason]
+              properties:
+                username: { type: string, maxLength: 30 }
+                banned: { type: boolean }
+                reason: { type: string, minLength: 3, maxLength: 500 }
+      responses:
+        "204": { description: Done, and written to the public log. }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  /mod/feature:
+    post:
+      operationId: featureArticle
+      tags: [mod]
+      summary: Feature or unfeature an article (moderators only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [article_id, featured]
+              properties:
+                article_id: { type: integer, format: int64 }
+                featured: { type: boolean }
+      responses:
+        "204": { description: Done. }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  /mod/domain-rules:
+    get:
+      operationId: listDomainRules
+      tags: [mod]
+      summary: Per-domain ranking rules (moderators only)
+      responses:
+        "200":
+          description: The rules.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items: { type: array, items: { $ref: "#/components/schemas/DomainRule" } }
+        "403": { $ref: "#/components/responses/Forbidden" }
+    put:
+      operationId: setDomainRule
+      tags: [mod]
+      summary: Set a domain's ranking multiplier, or ban it (moderators only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [domain]
+              properties:
+                domain: { type: string, maxLength: 253 }
+                multiplier: { type: number, minimum: 0, maximum: 2, default: 1 }
+                banned: { type: boolean, default: false }
+                note: { type: string, maxLength: 500 }
+      responses:
+        "200":
+          description: The rule.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DomainRule" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  /mod/holds:
+    get:
+      operationId: listHolds
+      tags: [mod]
+      summary: Items held back for review (moderators only)
+      parameters: [{ $ref: "#/components/parameters/Limit" }]
+      responses:
+        "200":
+          description: The holds.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items: { type: array, items: { $ref: "#/components/schemas/Hold" } }
+        "403": { $ref: "#/components/responses/Forbidden" }
+    post:
+      operationId: releaseHold
+      tags: [mod]
+      summary: Let a held item through (moderators only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [subject_type, subject_id]
+              properties:
+                subject_type: { $ref: "#/components/schemas/FlagSubject" }
+                subject_id: { type: integer, format: int64 }
+      responses:
+        "204": { description: Released. }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+components:
+  securitySchemes:
+    session:
+      type: apiKey
+      in: cookie
+      name: bw_session
+      description: |
+        Set by the sign-in endpoints. Every mutation also needs the `X-CSRF-Token`
+        header, whose value comes from `GET /auth/me`.
+
+  parameters:
+    ID:
+      name: id
+      in: path
+      required: true
+      schema: { type: integer, format: int64, minimum: 1 }
+    Username:
+      name: username
+      in: path
+      required: true
+      schema: { type: string, maxLength: 30 }
+    Slug:
+      name: slug
+      in: path
+      required: true
+      schema: { type: string, maxLength: 30 }
+    Cursor:
+      name: cursor
+      in: query
+      description: The `nextCursor` from the previous page. Opaque; do not construct one.
+      schema: { type: string, maxLength: 120 }
+    Limit:
+      name: limit
+      in: query
+      schema: { type: integer, minimum: 1, maximum: 100, default: 30 }
+
+  responses:
+    BadRequest:
+      description: The request could not be read.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    Unauthorized:
+      description: You need to be signed in.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    Forbidden:
+      description: Signed in, but not allowed to do this.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    NotFound:
+      description: No such thing, or it is not visible to you.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    Conflict:
+      description: That conflicts with something that already exists.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    Invalid:
+      description: The request was understood but a field is not acceptable.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    TooMany:
+      description: You are doing that too often.
+      headers:
+        Retry-After: { schema: { type: integer } }
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    Unavailable:
+      description: A dependency is down.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    NotConfigured:
+      description: This sign-in method is not configured on this server.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    UserPage:
+      description: A page of users.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/UserPage" }
+    Relation:
+      description: How you now relate to that user.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Relation" }
+    VoteState:
+      description: Your vote and the new total.
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [points, viewer_vote]
+            properties:
+              points: { type: integer }
+              viewer_vote: { type: integer, enum: [-1, 0, 1] }
+    NoteState:
+      description: The note's counters and your relationship to it.
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [like_count, repost_count, liked, reposted, bookmarked]
+            properties:
+              like_count: { type: integer }
+              repost_count: { type: integer }
+              liked: { type: boolean }
+              reposted: { type: boolean }
+              bookmarked: { type: boolean }
+
+  schemas:
+    Error:
+      type: object
+      required: [code, message]
+      properties:
+        code: { $ref: "#/components/schemas/ErrorCode" }
+        message:
+          type: string
+          description: A short sentence for logs. User-facing text comes from i18n, keyed by `code`.
+        field:
+          type: string
+          description: Which request field is at fault, when one is.
+
+    ErrorCode:
+      type: string
+      enum:
+        - bad_request
+        - unauthorized
+        - forbidden
+        - not_found
+        - conflict
+        - invalid
+        - rate_limited
+        - banned
+        - blocked
+        - duplicate_url
+        - username_taken
+        - slug_taken
+        - edit_window_closed
+        - karma_too_low
+        - new_account_limit
+        - reply_not_allowed
+        - not_configured
+        - too_large
+        - unsupported_media
+        - held_for_review
+        - internal
+
+    Health:
+      type: object
+      required: [status, version]
+      properties:
+        status: { type: string, enum: [ok, degraded] }
+        version: { type: string }
+
+    Lang:   { type: string, enum: [uz, ru, en] }
+    Script: { type: string, enum: [latn, cyrl] }
+    Theme:  { type: string, enum: [system, light, dark] }
+    Accent: { type: string, enum: [lapis, turquoise, saffron, plum, moss] }
+    OAuthProvider: { type: string, enum: [github, google] }
+    MediaKind: { type: string, enum: [avatar, banner, note, article, cover] }
+    LinkKind: { type: string, enum: [link, text, ask, show] }
+    LinkSort: { type: string, enum: [top, new, best], default: top }
+    ArticleSort: { type: string, enum: [latest, popular, featured], default: latest }
+    ArticleStatus: { type: string, enum: [draft, scheduled, published] }
+    CommentSubject: { type: string, enum: [link, article] }
+    VoteSubject: { type: string, enum: [link, article, comment] }
+    FlagSubject: { type: string, enum: [link, article, comment, note] }
+    ReportSubject: { type: string, enum: [link, article, comment, note, user] }
+    ReportReason: { type: string, enum: [spam, abuse, off_topic, illegal, duplicate, other] }
+    SearchKind: { type: string, enum: [link, article, note, comment, user] }
+    ReplyPolicy: { type: string, enum: [everyone, following, mentioned] }
+    BadgeKind: { type: string, enum: [github, company_email, moderator, early, author, founder] }
+    FeedKind: { type: string, enum: [link, note, article] }
+
+    SessionInfo:
+      type: object
+      required: [user, csrf_token, needs_username, dev_login_enabled]
+      properties:
+        user:
+          oneOf:
+            - $ref: "#/components/schemas/User"
+            - type: "null"
+        csrf_token: { type: string }
+        needs_username:
+          type: boolean
+          description: True right after a first sign-in, before a username is claimed.
+        dev_login_enabled: { type: boolean }
+
+    TelegramAuth:
+      type: object
+      description: The payload the Telegram login widget produces, verified against the bot token.
+      required: [id, auth_date, hash]
+      properties:
+        id: { type: integer, format: int64 }
+        first_name: { type: string }
+        last_name: { type: string }
+        username: { type: string }
+        photo_url: { type: string }
+        auth_date: { type: integer, format: int64 }
+        hash: { type: string }
+
+    User:
+      type: object
+      required: [id, username, display_name, karma, created_at, accent, is_moderator]
+      properties:
+        id: { type: integer, format: int64 }
+        username: { type: string }
+        display_name: { type: string }
+        pronouns: { type: string }
+        bio: { type: string }
+        role_title: { type: string }
+        company: { type: string }
+        location: { type: string }
+        open_to_work: { type: boolean }
+        accent: { $ref: "#/components/schemas/Accent" }
+        avatar_url: { type: string, nullable: true }
+        banner_url: { type: string, nullable: true }
+        karma: { type: integer }
+        is_moderator: { type: boolean }
+        lang: { $ref: "#/components/schemas/Lang" }
+        script: { $ref: "#/components/schemas/Script" }
+        theme: { $ref: "#/components/schemas/Theme" }
+        badges: { type: array, items: { $ref: "#/components/schemas/Badge" } }
+        created_at: { type: string, format: date-time }
+
+    Badge:
+      type: object
+      required: [kind]
+      properties:
+        kind: { $ref: "#/components/schemas/BadgeKind" }
+        detail: { type: string }
+
+    ProfileEdit:
+      type: object
+      properties:
+        display_name: { type: string, maxLength: 60 }
+        pronouns: { type: string, maxLength: 24 }
+        bio: { type: string, maxLength: 160 }
+        role_title: { type: string, maxLength: 60 }
+        company: { type: string, maxLength: 60 }
+        location: { type: string, maxLength: 60 }
+        open_to_work: { type: boolean }
+        accent: { $ref: "#/components/schemas/Accent" }
+        links:
+          type: array
+          maxItems: 8
+          items:
+            type: object
+            required: [kind, url]
+            properties:
+              kind: { type: string, enum: [website, github, gitlab, telegram, x, linkedin, email, other] }
+              url: { type: string, maxLength: 300 }
+        stack:
+          type: array
+          maxItems: 20
+          items: { type: string, maxLength: 30 }
+
+    Profile:
+      type: object
+      required: [user, readme_html, links, stack, repos, counts]
+      properties:
+        user: { $ref: "#/components/schemas/User" }
+        readme_html: { type: string }
+        readme_md: { type: string, description: Only present for the profile's owner. }
+        links:
+          type: array
+          items:
+            type: object
+            required: [kind, url]
+            properties:
+              kind: { type: string }
+              url: { type: string }
+        stack: { type: array, items: { type: string } }
+        repos: { type: array, items: { $ref: "#/components/schemas/Repo" } }
+        counts:
+          type: object
+          required: [links, notes, articles, comments, followers, following]
+          properties:
+            links: { type: integer }
+            notes: { type: integer }
+            articles: { type: integer }
+            comments: { type: integer }
+            followers: { type: integer }
+            following: { type: integer }
+        relation:
+          oneOf:
+            - $ref: "#/components/schemas/Relation"
+            - type: "null"
+
+    Relation:
+      type: object
+      required: [following, followed_by, blocking, muting]
+      properties:
+        following: { type: boolean }
+        followed_by: { type: boolean }
+        blocking: { type: boolean }
+        muting: { type: boolean }
+
+    Repo:
+      type: object
+      required: [full_name, url]
+      properties:
+        full_name: { type: string }
+        description: { type: string }
+        language: { type: string }
+        stars: { type: integer }
+        url: { type: string }
+
+    Media:
+      type: object
+      required: [id, url, width, height, mime]
+      properties:
+        id: { type: integer, format: int64 }
+        url: { type: string }
+        width: { type: integer }
+        height: { type: integer }
+        mime: { type: string }
+
+    Tag:
+      type: object
+      required: [slug, name, post_count]
+      properties:
+        slug: { type: string }
+        name: { type: string }
+        description: { type: string }
+        post_count: { type: integer }
+        following: { type: boolean }
+
+    LinkNew:
+      type: object
+      required: [kind, title]
+      properties:
+        kind: { $ref: "#/components/schemas/LinkKind" }
+        title: { type: string, minLength: 3, maxLength: 100 }
+        url: { type: string, maxLength: 2000, nullable: true }
+        body_md: { type: string, maxLength: 20000 }
+        tags: { type: array, minItems: 1, maxItems: 3, items: { type: string, maxLength: 30 } }
+
+    Link:
+      type: object
+      required:
+        [id, kind, title, slug, author, points, comment_count, created_at, path, tags, viewer_vote]
+      properties:
+        id: { type: integer, format: int64 }
+        kind: { $ref: "#/components/schemas/LinkKind" }
+        title: { type: string }
+        slug: { type: string }
+        path: { type: string, description: The canonical path on the site, e.g. /l/42/my-post. }
+        url: { type: string, nullable: true }
+        domain: { type: string }
+        body_md: { type: string }
+        body_html: { type: string }
+        author: { $ref: "#/components/schemas/User" }
+        tags: { type: array, items: { $ref: "#/components/schemas/Tag" } }
+        points: { type: integer }
+        comment_count: { type: integer }
+        viewer_vote: { type: integer, enum: [-1, 0, 1] }
+        viewer_flagged: { type: boolean }
+        can_edit: { type: boolean }
+        killed: { type: boolean }
+        created_at: { type: string, format: date-time }
+        edited_at: { type: string, format: date-time, nullable: true }
+
+    LinkPage:
+      type: object
+      required: [items, nextCursor]
+      properties:
+        items: { type: array, items: { $ref: "#/components/schemas/Link" } }
+        nextCursor: { type: string, nullable: true }
+
+    Comment:
+      type: object
+      required: [id, author, body_html, points, depth, created_at, viewer_vote]
+      properties:
+        id: { type: integer, format: int64 }
+        parent_id: { type: integer, format: int64, nullable: true }
+        depth: { type: integer }
+        author: { $ref: "#/components/schemas/User" }
+        body_md: { type: string }
+        body_html: { type: string }
+        points: { type: integer }
+        viewer_vote: { type: integer, enum: [-1, 0, 1] }
+        can_edit: { type: boolean }
+        collapsed:
+          type: boolean
+          description: True when a mute or a muted word applies; render it folded, not removed.
+        deleted: { type: boolean }
+        killed: { type: boolean }
+        created_at: { type: string, format: date-time }
+        edited_at: { type: string, format: date-time, nullable: true }
+
+    NoteNew:
+      type: object
+      properties:
+        body_md: { type: string, maxLength: 2000 }
+        reply_to_id: { type: integer, format: int64, nullable: true }
+        quote_of_id: { type: integer, format: int64, nullable: true }
+        repost_of_id: { type: integer, format: int64, nullable: true }
+        reply_policy: { $ref: "#/components/schemas/ReplyPolicy" }
+        code:
+          type: object
+          description: One optional code block, highlighted on the server.
+          required: [body]
+          properties:
+            lang: { type: string, maxLength: 20 }
+            body: { type: string, maxLength: 4000 }
+        media:
+          type: array
+          maxItems: 4
+          description: Up to four images. Alt text is required for every one.
+          items:
+            type: object
+            required: [media_id, alt]
+            properties:
+              media_id: { type: integer, format: int64 }
+              alt: { type: string, minLength: 1, maxLength: 300 }
+
+    Note:
+      type: object
+      required:
+        [id, author, body_html, like_count, repost_count, reply_count, created_at, path, media]
+      properties:
+        id: { type: integer, format: int64 }
+        author: { $ref: "#/components/schemas/User" }
+        path: { type: string, description: The canonical path, e.g. /@aziz/n/42. }
+        body_md: { type: string }
+        body_html: { type: string }
+        code:
+          oneOf:
+            - type: object
+              required: [lang, body, html]
+              properties:
+                lang: { type: string }
+                body: { type: string }
+                html: { type: string }
+            - type: "null"
+        media:
+          type: array
+          items:
+            type: object
+            required: [alt, media]
+            properties:
+              alt: { type: string }
+              media: { $ref: "#/components/schemas/Media" }
+        preview:
+          oneOf:
+            - $ref: "#/components/schemas/LinkPreview"
+            - type: "null"
+        reply_to_id: { type: integer, format: int64, nullable: true }
+        quote_of:
+          oneOf:
+            - $ref: "#/components/schemas/Note"
+            - type: "null"
+        repost_of:
+          oneOf:
+            - $ref: "#/components/schemas/Note"
+            - type: "null"
+        reply_policy: { $ref: "#/components/schemas/ReplyPolicy" }
+        like_count: { type: integer }
+        repost_count: { type: integer }
+        quote_count: { type: integer }
+        reply_count: { type: integer }
+        liked: { type: boolean }
+        reposted: { type: boolean }
+        bookmarked: { type: boolean }
+        can_edit: { type: boolean }
+        can_reply: { type: boolean }
+        killed: { type: boolean }
+        promoted_link_id: { type: integer, format: int64, nullable: true }
+        created_at: { type: string, format: date-time }
+        edited_at: { type: string, format: date-time, nullable: true }
+
+    LinkPreview:
+      type: object
+      required: [url, domain]
+      properties:
+        url: { type: string }
+        title: { type: string }
+        description: { type: string }
+        domain: { type: string }
+        image:
+          oneOf:
+            - $ref: "#/components/schemas/Media"
+            - type: "null"
+
+    NotePage:
+      type: object
+      required: [items, nextCursor]
+      properties:
+        items: { type: array, items: { $ref: "#/components/schemas/Note" } }
+        nextCursor: { type: string, nullable: true }
+
+    ArticleEdit:
+      type: object
+      required: [title, body_md]
+      properties:
+        title: { type: string, maxLength: 140 }
+        subtitle: { type: string, maxLength: 200 }
+        body_md: { type: string, maxLength: 200000 }
+        lang: { $ref: "#/components/schemas/Lang" }
+        canonical_url: { type: string, maxLength: 2000, nullable: true }
+        cover_media_id: { type: integer, format: int64, nullable: true }
+        series_id: { type: integer, format: int64, nullable: true }
+        series_sort: { type: integer, minimum: 0, maximum: 999 }
+        slug: { type: string, maxLength: 120 }
+        tags: { type: array, maxItems: 5, items: { type: string, maxLength: 30 } }
+
+    Article:
+      type: object
+      required:
+        [id, title, slug, author, status, points, comment_count, reading_minutes, path, tags, created_at]
+      properties:
+        id: { type: integer, format: int64 }
+        title: { type: string }
+        subtitle: { type: string }
+        slug: { type: string }
+        path: { type: string, description: The canonical path, e.g. /@aziz/why-go. }
+        author: { $ref: "#/components/schemas/User" }
+        body_md: { type: string }
+        body_html: { type: string }
+        toc: { type: array, items: { $ref: "#/components/schemas/TocEntry" } }
+        cover:
+          oneOf:
+            - $ref: "#/components/schemas/Media"
+            - type: "null"
+        lang: { $ref: "#/components/schemas/Lang" }
+        canonical_url: { type: string, nullable: true }
+        series:
+          oneOf:
+            - $ref: "#/components/schemas/Series"
+            - type: "null"
+        series_sort: { type: integer }
+        status: { $ref: "#/components/schemas/ArticleStatus" }
+        tags: { type: array, items: { $ref: "#/components/schemas/Tag" } }
+        points: { type: integer }
+        comment_count: { type: integer }
+        reading_minutes: { type: integer }
+        viewer_vote: { type: integer, enum: [-1, 0, 1] }
+        featured: { type: boolean }
+        can_edit: { type: boolean }
+        killed: { type: boolean }
+        published_at: { type: string, format: date-time, nullable: true }
+        scheduled_at: { type: string, format: date-time, nullable: true }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+
+    TocEntry:
+      type: object
+      required: [level, text, id]
+      properties:
+        level: { type: integer, minimum: 2, maximum: 4 }
+        text: { type: string }
+        id: { type: string }
+
+    ArticlePage:
+      type: object
+      required: [items, nextCursor]
+      properties:
+        items: { type: array, items: { $ref: "#/components/schemas/Article" } }
+        nextCursor: { type: string, nullable: true }
+
+    ArticleVersion:
+      type: object
+      required: [n, title, created_at]
+      properties:
+        n: { type: integer }
+        title: { type: string }
+        created_at: { type: string, format: date-time }
+
+    Series:
+      type: object
+      required: [id, slug, title]
+      properties:
+        id: { type: integer, format: int64 }
+        slug: { type: string }
+        title: { type: string }
+        description: { type: string }
+
+    FeedItem:
+      type: object
+      required: [kind, created_at]
+      properties:
+        kind: { $ref: "#/components/schemas/FeedKind" }
+        created_at: { type: string, format: date-time }
+        link:
+          oneOf:
+            - $ref: "#/components/schemas/Link"
+            - type: "null"
+        note:
+          oneOf:
+            - $ref: "#/components/schemas/Note"
+            - type: "null"
+        article:
+          oneOf:
+            - $ref: "#/components/schemas/Article"
+            - type: "null"
+
+    FeedPage:
+      type: object
+      required: [items, nextCursor]
+      properties:
+        items: { type: array, items: { $ref: "#/components/schemas/FeedItem" } }
+        nextCursor: { type: string, nullable: true }
+
+    UserPage:
+      type: object
+      required: [items, nextCursor]
+      properties:
+        items: { type: array, items: { $ref: "#/components/schemas/User" } }
+        nextCursor: { type: string, nullable: true }
+
+    Notification:
+      type: object
+      required: [id, kind, read, created_at]
+      properties:
+        id: { type: integer, format: int64 }
+        kind:
+          type: string
+          enum: [reply, mention, like, repost, quote, follow, comment,
+                 article_published, mod_action, badge, featured]
+        actor:
+          oneOf:
+            - $ref: "#/components/schemas/User"
+            - type: "null"
+        subject_type: { type: string }
+        subject_id: { type: integer, format: int64, nullable: true }
+        href: { type: string, description: Where to go when the notification is clicked. }
+        read: { type: boolean }
+        created_at: { type: string, format: date-time }
+
+    NotificationPage:
+      type: object
+      required: [items, nextCursor, unread]
+      properties:
+        items: { type: array, items: { $ref: "#/components/schemas/Notification" } }
+        nextCursor: { type: string, nullable: true }
+        unread: { type: integer }
+
+    SearchResults:
+      type: object
+      required: [links, notes, articles, comments, users, total]
+      properties:
+        total: { type: integer }
+        links: { type: array, items: { $ref: "#/components/schemas/Link" } }
+        notes: { type: array, items: { $ref: "#/components/schemas/Note" } }
+        articles: { type: array, items: { $ref: "#/components/schemas/Article" } }
+        comments: { type: array, items: { $ref: "#/components/schemas/Comment" } }
+        users: { type: array, items: { $ref: "#/components/schemas/User" } }
+
+    Report:
+      type: object
+      required: [id, reporter, subject_type, subject_id, reason, created_at]
+      properties:
+        id: { type: integer, format: int64 }
+        reporter: { $ref: "#/components/schemas/User" }
+        subject_type: { $ref: "#/components/schemas/ReportSubject" }
+        subject_id: { type: integer, format: int64 }
+        reason: { $ref: "#/components/schemas/ReportReason" }
+        note: { type: string }
+        created_at: { type: string, format: date-time }
+
+    ModAction:
+      type: object
+      required: [id, actor, action, subject_type, created_at]
+      properties:
+        id: { type: integer, format: int64 }
+        actor: { $ref: "#/components/schemas/User" }
+        action: { type: string }
+        subject_type: { type: string }
+        subject_id: { type: integer, format: int64, nullable: true }
+        subject_text: { type: string }
+        reason: { type: string }
+        created_at: { type: string, format: date-time }
+
+    ModLogPage:
+      type: object
+      required: [items, nextCursor]
+      properties:
+        items: { type: array, items: { $ref: "#/components/schemas/ModAction" } }
+        nextCursor: { type: string, nullable: true }
+
+    DomainRule:
+      type: object
+      required: [domain, multiplier, banned]
+      properties:
+        domain: { type: string }
+        multiplier: { type: number }
+        banned: { type: boolean }
+        note: { type: string }
+
+    Hold:
+      type: object
+      required: [subject_type, subject_id, reason, created_at]
+      properties:
+        subject_type: { type: string }
+        subject_id: { type: integer, format: int64 }
+        reason: { type: string }
+        created_at: { type: string, format: date-time }
