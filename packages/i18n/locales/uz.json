@@ -1,0 +1,34 @@
+{
+  "notify": {
+    "reply": "{actor} sizga javob yozdi",
+    "mention": "{actor} sizni eslatdi",
+    "like": "{actor} qaydingizni yoqtirdi",
+    "repost": "{actor} qaydingizni ulashdi",
+    "quote": "{actor} qaydingizdan iqtibos keltirdi",
+    "follow": "{actor} sizga obuna boʻldi",
+    "comment": "{actor} postingizga izoh yozdi",
+    "article_published": "{actor} yangi maqola chop etdi",
+    "mod_action": "Moderator postingiz boʻyicha qaror qabul qildi",
+    "badge": "Sizga yangi nishon berildi",
+    "featured": "Maqolangiz tanlanganlar qatoriga kiritildi",
+    "open": "Ochish"
+  },
+  "bot": {
+    "start_linked": "Tayyor! Endi buildwith.uz bildirishnomalari shu yerga keladi. Toʻxtatish uchun /stop.",
+    "start_unknown": "Avval buildwith.uz saytiga Telegram orqali kiring, soʻng /start buyrugʻini qayta yuboring.",
+    "stopped": "Bildirishnomalar oʻchirildi. Qayta yoqish uchun /start.",
+    "help": "/start — bildirishnomalarni yoqish\n/stop — oʻchirish",
+    "digest_title": "Bugungi eng yaxshi 10 ta post",
+    "autopost": "{title}\n{points} ball · {url}"
+  },
+  "monthly": {
+    "hiring": "Kim ishga oladi? ({month})",
+    "looking": "Ish qidiryapman ({month})",
+    "freelance": "Frilanser kerakmi? ({month})",
+    "building": "Nima qurayapsiz? ({month})",
+    "hiring_body": "Kompaniyangiz kimnidir qidiryaptimi? Bitta izoh — bitta vakansiya: lavozim, joy yoki remote, maosh oraligʻi, qanday bogʻlanish.",
+    "looking_body": "Ish qidiryapsizmi? Bitta izohda: kimsiz, nimani qila olasiz, qayerda, qanday bogʻlanish.",
+    "freelance_body": "Frilanser yoki loyiha qidiryapsizmi? Nima kerak yoki nima taklif qilasiz — shu yerda.",
+    "building_body": "Bu oy nima ustida ishlayapsiz? Loyihangizni bir necha soʻz bilan koʻrsating."
+  }
+}

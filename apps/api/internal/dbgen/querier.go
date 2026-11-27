@@ -104,6 +104,8 @@ type Querier interface {
 	GetSeries(ctx context.Context, id int64) (Series, error)
 	GetSeriesBySlug(ctx context.Context, arg GetSeriesBySlugParams) (Series, error)
 	GetSession(ctx context.Context, tokenHash []byte) (GetSessionRow, error)
+	// The account that opens monthly threads: the oldest admin, else the oldest moderator.
+	GetSystemAuthor(ctx context.Context) (User, error)
 	GetTagBySlug(ctx context.Context, slug string) (Tag, error)
 	GetTelegramByChat(ctx context.Context, chatID int64) (TelegramAccount, error)
 	GetTelegramByUser(ctx context.Context, userID int64) (TelegramAccount, error)
@@ -129,6 +131,7 @@ type Querier interface {
 	LinkTelegram(ctx context.Context, arg LinkTelegramParams) (TelegramAccount, error)
 	ListAllTelegramRecipients(ctx context.Context) ([]ListAllTelegramRecipientsRow, error)
 	ListArticleRankCandidates(ctx context.Context) ([]ListArticleRankCandidatesRow, error)
+	ListArticleScoreCandidates(ctx context.Context) ([]ListArticleScoreCandidatesRow, error)
 	ListArticleVersions(ctx context.Context, articleID int64) ([]ListArticleVersionsRow, error)
 	// The author's own list, drafts included.
 	ListArticlesByAuthorAll(ctx context.Context, arg ListArticlesByAuthorAllParams) ([]ListArticlesByAuthorAllRow, error)
@@ -137,6 +140,8 @@ type Querier interface {
 	ListArticlesByPublished(ctx context.Context, arg ListArticlesByPublishedParams) ([]ListArticlesByPublishedRow, error)
 	// Popular articles. Keyset cursor is (score, id).
 	ListArticlesByScore(ctx context.Context, arg ListArticlesByScoreParams) ([]ListArticlesByScoreRow, error)
+	// Link posts that crossed the autopost threshold and have not been sent yet.
+	ListAutopostCandidates(ctx context.Context, minPoints int32) ([]ListAutopostCandidatesRow, error)
 	ListBadges(ctx context.Context, userID int64) ([]UserBadge, error)
 	ListBadgesForUsers(ctx context.Context, ids []int64) ([]UserBadge, error)
 	ListBlocked(ctx context.Context, blockerID int64) ([]ListBlockedRow, error)
@@ -192,6 +197,7 @@ type Querier interface {
 	// Chronological Following timeline: everything from the people and tags you follow.
 	// Fan-out on read, keyset paginated on (created_at, id) across all three kinds.
 	ListTimeline(ctx context.Context, arg ListTimelineParams) ([]ListTimelineRow, error)
+	ListTopLinksSince(ctx context.Context, arg ListTopLinksSinceParams) ([]ListTopLinksSinceRow, error)
 	ListUserLinks(ctx context.Context, userID int64) ([]UserLink, error)
 	ListUserRepos(ctx context.Context, userID int64) ([]UserRepo, error)
 	ListUserStack(ctx context.Context, userID int64) ([]UserStack, error)
@@ -200,11 +206,13 @@ type Querier interface {
 	LogModAction(ctx context.Context, arg LogModActionParams) (ModAction, error)
 	MarkNotificationRead(ctx context.Context, arg MarkNotificationReadParams) (int64, error)
 	MarkNotificationsRead(ctx context.Context, userID int64) (int64, error)
+	MarkTelegramPosted(ctx context.Context, arg MarkTelegramPostedParams) (int64, error)
 	Mute(ctx context.Context, arg MuteParams) (int64, error)
 	PeekRateCounter(ctx context.Context, arg PeekRateCounterParams) (int32, error)
 	PromoteNoteToLink(ctx context.Context, arg PromoteNoteToLinkParams) error
 	PruneRateCounters(ctx context.Context) (int64, error)
 	PublishArticle(ctx context.Context, id int64) (Article, error)
+	PublishDueArticle(ctx context.Context, id int64) (int64, error)
 	// Karma is recomputed from scratch so it can never drift.
 	RecomputeKarma(ctx context.Context, userID int64) (int32, error)
 	RecordNoteEdit(ctx context.Context, arg RecordNoteEditParams) error

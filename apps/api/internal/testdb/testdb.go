@@ -4,11 +4,15 @@ package testdb
 import (
 	"context"
 	"database/sql"
+	neturl "net/url"
 	"os"
+	"path/filepath"
+	"regexp"
 	"strings"
 	"sync"
 	"testing"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	_ "github.com/jackc/pgx/v5/stdlib" // database/sql driver for goose
 	"github.com/pressly/goose/v3"
@@ -16,22 +20,29 @@ import (
 	"github.com/buildwithuz/buildwith/apps/api/db"
 )
 
-var migrateOnce sync.Once
-var migrateErr error
+var (
+	prepareOnce sync.Once
+	prepared    string
+	prepareErr  error
+)
 
-// Pool returns a pool on BUILDWITH_TEST_DATABASE_URL with every table empty.
-// Tests are skipped when the variable is unset, so `go test ./...` still works
-// without Docker; CI always sets it.
+// Pool returns a pool on a migrated database with every table empty.
+//
+// go test runs packages in parallel, so each package gets its own database,
+// derived from BUILDWITH_TEST_DATABASE_URL and created on first use. Tests are
+// skipped when the variable is unset, so `go test ./...` works without Docker;
+// CI always sets it.
 func Pool(t *testing.T) *pgxpool.Pool {
 	t.Helper()
-	url := os.Getenv("BUILDWITH_TEST_DATABASE_URL")
-	if url == "" {
+	base := os.Getenv("BUILDWITH_TEST_DATABASE_URL")
+	if base == "" {
 		t.Skip("BUILDWITH_TEST_DATABASE_URL not set; skipping database test")
 	}
-	migrateOnce.Do(func() { migrateErr = migrate(url) })
-	if migrateErr != nil {
-		t.Fatalf("migrate: %v", migrateErr)
+	prepareOnce.Do(func() { prepared, prepareErr = prepare(base) })
+	if prepareErr != nil {
+		t.Fatalf("test database: %v", prepareErr)
 	}
+	url := prepared
 	ctx := context.Background()
 	pool, err := pgxpool.New(ctx, url)
 	if err != nil {
@@ -43,6 +54,35 @@ func Pool(t *testing.T) *pgxpool.Pool {
 	}
 	return pool
 }
+
+// prepare creates (if needed) and migrates this package's own database.
+func prepare(base string) (string, error) {
+	u, err := neturl.Parse(base)
+	if err != nil {
+		return "", err
+	}
+	wd, _ := os.Getwd()
+	name := strings.TrimPrefix(u.Path, "/") + "_" + nonWord.ReplaceAllString(filepath.Base(wd), "_")
+	ctx := context.Background()
+	admin, err := pgx.Connect(ctx, base)
+	if err != nil {
+		return "", err
+	}
+	defer admin.Close(ctx)
+	var exists bool
+	if err := admin.QueryRow(ctx, "select exists (select 1 from pg_database where datname = $1)", name).Scan(&exists); err != nil {
+		return "", err
+	}
+	if !exists {
+		if _, err := admin.Exec(ctx, "create database "+pgx.Identifier{name}.Sanitize()); err != nil {
+			return "", err
+		}
+	}
+	u.Path = "/" + name
+	return u.String(), migrate(u.String())
+}
+
+var nonWord = regexp.MustCompile(`[^a-z0-9_]+`)
 
 func migrate(url string) error {
 	sqlDB, err := sql.Open("pgx", url)

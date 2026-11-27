@@ -324,6 +324,12 @@ type TelegramAccount struct {
 	LinkedAt time.Time
 }
 
+type TelegramPost struct {
+	SubjectType string
+	SubjectID   int64
+	PostedAt    time.Time
+}
+
 type User struct {
 	ID            int64
 	Username      string

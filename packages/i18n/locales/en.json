@@ -1,0 +1,34 @@
+{
+  "notify": {
+    "reply": "{actor} replied to you",
+    "mention": "{actor} mentioned you",
+    "like": "{actor} liked your note",
+    "repost": "{actor} reposted your note",
+    "quote": "{actor} quoted your note",
+    "follow": "{actor} followed you",
+    "comment": "{actor} commented on your post",
+    "article_published": "{actor} published a new article",
+    "mod_action": "A moderator acted on your post",
+    "badge": "You earned a new badge",
+    "featured": "Your article was featured",
+    "open": "Open"
+  },
+  "bot": {
+    "start_linked": "Done! buildwith.uz notifications will arrive here. Send /stop to turn them off.",
+    "start_unknown": "Sign in to buildwith.uz with Telegram first, then send /start again.",
+    "stopped": "Notifications are off. Send /start to turn them back on.",
+    "help": "/start — turn notifications on\n/stop — turn them off",
+    "digest_title": "Today's top 10 posts",
+    "autopost": "{title}\n{points} points · {url}"
+  },
+  "monthly": {
+    "hiring": "Who is hiring? ({month})",
+    "looking": "Looking for work ({month})",
+    "freelance": "Need a freelancer? ({month})",
+    "building": "What are you building? ({month})",
+    "hiring_body": "Is your company hiring? One comment per job: role, city or remote, salary range, how to apply.",
+    "looking_body": "Looking for work? In one comment: who you are, what you do, where, how to reach you.",
+    "freelance_body": "Looking for a freelancer or a project? Post what you need or offer here.",
+    "building_body": "What are you working on this month? Show your project in a few words."
+  }
+}
