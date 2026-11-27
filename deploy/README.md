@@ -12,7 +12,9 @@ api, worker, bot (only with Telegram) ──► db (Postgres 17, not published)
 | File                     | Purpose                                                                      |
 | ------------------------ | ---------------------------------------------------------------------------- |
 | `compose.prod.yml`       | the stack: db, migrate (one-shot), api, worker, bot, web, caddy              |
-| `Caddyfile`              | TLS, security headers and CSP, routing, compression, upload limit            |
+| `Caddyfile`              | TLS via Let's Encrypt; the routes, headers and CSP are in `site.caddy`        |
+| `site.caddy`             | security headers and CSP, routing, compression, upload limit                 |
+| `Caddyfile.shared`, `compose.shared.yml` | the same behind another reverse proxy ([below](#shared-server-behind-another-proxy)) |
 | `deploy.sh`              | build → back up → migrate → restart → health check → roll back on failure    |
 | `backup.sh`              | `pg_dump` + media archive into `backups/`, retention, optional offsite rsync |
 | `restore.md`             | how to restore a backup                                                      |
@@ -180,6 +182,38 @@ in `deploy`'s crontab.
 
 For an offsite copy, set `BUILDWITH_BACKUP_RSYNC_TARGET` (and `BUILDWITH_BACKUP_RSYNC_SSH` for a dedicated key) in
 `.env.production`. Keep the copy in Uzbekistan too: the backups contain personal data.
+
+## Shared server behind another proxy
+
+Until the Uzbekistan server exists, buildwith.uz can run on a server that already hosts other apps behind a
+reverse proxy (nginx, Traefik, another Caddy) that owns ports 80/443. Set in `.env.production`:
+
+```bash
+BUILDWITH_EDGE_NETWORK=buildwith-edge
+```
+
+`deploy/lib.sh` then adds `compose.shared.yml`: Caddy publishes no ports, serves plain HTTP from
+`Caddyfile.shared` (same routes and headers, from `site.caddy`), joins the `buildwith-edge` Docker network as
+`buildwith-caddy`, and the stack gets smaller memory limits (~2.5 GB in total, Postgres `shared_buffers=256MB`).
+`deploy.sh` creates the network if it is missing.
+
+In the front proxy: TLS for `buildwith.uz` and `www.buildwith.uz`, `www` → `https://buildwith.uz` redirect, and
+everything else to `http://buildwith-caddy:80` with `Host`, `X-Forwarded-For` (append) and
+`X-Forwarded-Proto: https`, a body limit of at least 13 MB, and buffering off with a long read timeout (SSE).
+Caddy trusts `X-Forwarded-For` only from private addresses and reads it from the right.
+
+The checkout can live anywhere (e.g. `~/buildwith`, all paths follow it); set the repository variable `DEPLOY_PATH`
+for the Deploy workflow. If the server has little free memory, build on a bigger machine and load the images:
+
+```bash
+tag=$(git rev-parse --short=12 HEAD)          # on the same commit as the server checkout
+BUILDWITH_IMAGE_TAG=$tag docker compose -f deploy/compose.prod.yml build api web
+docker save buildwith-api:$tag buildwith-web:$tag | gzip | ssh deploy@server 'gunzip | docker load'
+ssh deploy@server "cd ~/buildwith && DEPLOY_SKIP_BUILD=1 ./deploy/deploy.sh"
+```
+
+Personal data of Uzbek users has to be stored in Uzbekistan, so treat a server abroad as temporary: move to a
+local one with a backup and restore ([restore.md](restore.md)) before the public launch.
 
 ## Day-2 operations
 

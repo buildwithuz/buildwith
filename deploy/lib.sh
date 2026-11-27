@@ -28,4 +28,9 @@ else
   export COMPOSE_PROFILES=
 fi
 
-dc() { docker compose --env-file "$BW_ENV_FILE" -f "$BW_ROOT/deploy/compose.prod.yml" "$@"; }
+# Behind another reverse proxy (a shared server): join its Docker network instead of taking :80/:443.
+BW_EDGE_NETWORK="${BUILDWITH_EDGE_NETWORK:-$(env_get BUILDWITH_EDGE_NETWORK)}"
+BW_COMPOSE_FILES=(-f "$BW_ROOT/deploy/compose.prod.yml")
+[[ -n "$BW_EDGE_NETWORK" ]] && BW_COMPOSE_FILES+=(-f "$BW_ROOT/deploy/compose.shared.yml")
+
+dc() { docker compose --env-file "$BW_ENV_FILE" "${BW_COMPOSE_FILES[@]}" "$@"; }

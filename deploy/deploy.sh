@@ -8,6 +8,7 @@
 #   DEPLOY_HEALTH_TIMEOUT=60    seconds to wait for the new version to become healthy
 #   DEPLOY_SKIP_PUBLIC_CHECK=1  only check inside the containers (first deploy, before DNS points here)
 #   DEPLOY_SKIP_BACKUP=1        skip the pre-deploy backup (not recommended)
+#   DEPLOY_SKIP_BUILD=1         use images already loaded for this tag (built elsewhere, see README)
 set -euo pipefail
 BW_LOG_TAG=deploy
 . "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
@@ -35,8 +36,20 @@ log "deploying $tag (commit $(git rev-parse --short=12 HEAD), previous: ${prev:-
 
 # --- build ---------------------------------------------------------------------------------------
 export BUILDWITH_IMAGE_TAG="$tag"
-log "building images buildwith-api:$tag and buildwith-web:$tag"
-dc build --pull api web
+if [[ "${DEPLOY_SKIP_BUILD:-}" == 1 ]]; then
+  for image in "buildwith-api:$tag" "buildwith-web:$tag"; do
+    docker image inspect "$image" >/dev/null 2>&1 || die "DEPLOY_SKIP_BUILD=1 but $image is not loaded"
+  done
+  log "using the loaded images buildwith-api:$tag and buildwith-web:$tag"
+else
+  log "building images buildwith-api:$tag and buildwith-web:$tag"
+  dc build --pull api web
+fi
+
+if [[ -n "$BW_EDGE_NETWORK" ]] && ! docker network inspect "$BW_EDGE_NETWORK" >/dev/null 2>&1; then
+  log "creating the network $BW_EDGE_NETWORK for the front proxy"
+  docker network create "$BW_EDGE_NETWORK" >/dev/null
+fi
 
 # The API image runs as uid 10001 and writes uploads here; Caddy reads them.
 media="$BW_DATA_DIR/media"
@@ -76,7 +89,7 @@ healthy() {
   check "web /healthz (in container)" dc exec -T web node -e \
     "fetch('http://127.0.0.1:3000/healthz').then(r=>process.exit(r.ok?0:1),()=>process.exit(1))" || return 1
   if [[ "${DEPLOY_SKIP_PUBLIC_CHECK:-}" != 1 ]]; then
-    # Through Caddy and TLS on this machine, independent of how DNS resolves from here.
+    # Through TLS on this machine (Caddy, or the front proxy on a shared server), independent of DNS.
     local c=(curl -fsS --max-time 5 --resolve "$BW_DOMAIN:443:127.0.0.1")
     check "https://$BW_DOMAIN/healthz" "${c[@]}" "https://$BW_DOMAIN/healthz" || return 1
     check "https://$BW_DOMAIN/v1/health" "${c[@]}" "https://$BW_DOMAIN/v1/health" || return 1
@@ -95,7 +108,7 @@ start() { # start <tag>
   BUILDWITH_IMAGE_TAG="$1" dc up -d --no-build --remove-orphans "${services[@]}" || return 1
   [[ " ${services[*]} " == *" bot "* ]] || dc rm --stop --force bot >/dev/null 2>&1 || true
   # deploy/ is mounted as a directory, so Caddy sees the checked-out Caddyfile; reload is a no-op if unchanged.
-  dc exec -T caddy caddy reload --config /etc/caddy/Caddyfile --adapter caddyfile >/dev/null 2>&1 \
+  dc exec -T caddy sh -c 'caddy reload --config "$BUILDWITH_CADDYFILE" --adapter caddyfile' >/dev/null 2>&1 \
     || log "warning: caddy reload failed; it keeps serving the previous config"
 }
 
