@@ -50,8 +50,26 @@
     background: var(--paper);
     color: var(--ink);
     font-family: var(--font-sans);
+    /* Inter: open digits, single-storey a off, disambiguated l/I for code-adjacent text. */
+    font-feature-settings: "cv11", "ss01", "ss03";
     -webkit-text-size-adjust: 100%;
+    -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
+  }
+  h1,
+  h2,
+  h3 {
+    letter-spacing: -0.011em;
+    text-wrap: balance;
+  }
+  p {
+    text-wrap: pretty;
+  }
+  .font-mono,
+  code,
+  kbd,
+  pre {
+    font-feature-settings: normal;
   }
   body {
     background: var(--paper);
@@ -69,7 +87,9 @@
     *,
     *::before,
     *::after {
+      /* biome-ignore lint/complexity/noImportantStyles: reduced motion must win over every animation */
       transition-duration: 0.01ms !important;
+      /* biome-ignore lint/complexity/noImportantStyles: reduced motion must win over every animation */
       animation-duration: 0.01ms !important;
     }
   }
@@ -137,9 +157,15 @@
     line-height: 1.25;
     margin-top: 1.4em;
   }
-  .prose-bw h1 { font-size: 1.6em; }
-  .prose-bw h2 { font-size: 1.35em; }
-  .prose-bw h3 { font-size: 1.15em; }
+  .prose-bw h1 {
+    font-size: 1.6em;
+  }
+  .prose-bw h2 {
+    font-size: 1.35em;
+  }
+  .prose-bw h3 {
+    font-size: 1.15em;
+  }
   .prose-bw img {
     max-width: 100%;
     height: auto;
@@ -212,9 +238,7 @@
     font-family: var(--font-sans);
     scroll-margin-top: 80px;
   }
-  .prose-article pre,
-  .prose-article code,
-  .prose-article table {
+  .prose-article :is(pre, code) {
     font-family: var(--font-mono);
   }
   .prose-article table {
@@ -222,11 +246,131 @@
   }
 
   /* Server-side syntax highlighting (Chroma classes) in token colours. */
-  .code .k, .code .kd, .code .kn, .code .kr, .code .kt, .code .kc { color: var(--lapis); }
-  .code .s, .code .s1, .code .s2, .code .sb, .code .sr, .code .dl { color: var(--turquoise); }
-  .code .c, .code .c1, .code .cm, .code .cs, .code .ch { color: var(--muted); font-style: italic; }
-  .code .m, .code .mi, .code .mf, .code .mh, .code .il { color: var(--saffron); }
-  .code .nf, .code .fm { color: var(--plum); }
-  .code .nb, .code .bp { color: var(--moss); }
-  .code .o, .code .ow, .code .p { color: var(--ink); }
+  .code .k,
+  .code .kd,
+  .code .kn,
+  .code .kr,
+  .code .kt,
+  .code .kc {
+    color: var(--lapis);
+  }
+  .code .s,
+  .code .s1,
+  .code .s2,
+  .code .sb,
+  .code .sr,
+  .code .dl {
+    color: var(--turquoise);
+  }
+  .code .c,
+  .code .c1,
+  .code .cm,
+  .code .cs,
+  .code .ch {
+    color: var(--muted);
+    font-style: italic;
+  }
+  .code .m,
+  .code .mi,
+  .code .mf,
+  .code .mh,
+  .code .il {
+    color: var(--saffron);
+  }
+  .code .nf,
+  .code .fm {
+    color: var(--plum);
+  }
+  .code .nb,
+  .code .bp {
+    color: var(--moss);
+  }
+  .code .o,
+  .code .ow,
+  .code .p {
+    color: var(--ink);
+  }
+}
+
+/* Micro-interactions for reactions. Short, springy, and off for reduced motion. */
+@keyframes bw-pop {
+  0% {
+    transform: scale(1);
+  }
+  35% {
+    transform: scale(1.32);
+  }
+  70% {
+    transform: scale(0.92);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+@keyframes bw-burst {
+  0% {
+    transform: scale(0.4);
+    opacity: 0.55;
+  }
+  100% {
+    transform: scale(1.9);
+    opacity: 0;
+  }
+}
+@keyframes bw-turn {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(180deg);
+  }
+}
+@keyframes bw-bump {
+  0% {
+    transform: translateY(0);
+  }
+  40% {
+    transform: translateY(-3px);
+  }
+  100% {
+    transform: translateY(0);
+  }
+}
+@keyframes bw-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(2px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@layer utilities {
+  .anim-pop {
+    animation: bw-pop 360ms var(--ease-out);
+  }
+  .anim-turn {
+    animation: bw-turn 420ms var(--ease-out);
+  }
+  .anim-bump {
+    animation: bw-bump 260ms var(--ease-out);
+  }
+  .anim-fade-in {
+    animation: bw-fade-in 180ms var(--ease-out);
+  }
+  .anim-burst {
+    animation: bw-burst 420ms var(--ease-out) forwards;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .anim-pop,
+  .anim-turn,
+  .anim-bump,
+  .anim-fade-in,
+  .anim-burst {
+    animation: none;
+  }
 }

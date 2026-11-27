@@ -15,7 +15,16 @@ export interface DialogProps {
 }
 
 /** A modal dialog. Focus is trapped and restored by Radix. */
-export function Dialog({ open, onOpenChange, trigger, title, description, closeLabel, children, wide }: DialogProps) {
+export function Dialog({
+  open,
+  onOpenChange,
+  trigger,
+  title,
+  description,
+  closeLabel,
+  children,
+  wide,
+}: DialogProps) {
   return (
     <D.Root open={open} onOpenChange={onOpenChange}>
       {trigger && <D.Trigger asChild>{trigger}</D.Trigger>}

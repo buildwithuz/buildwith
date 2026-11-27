@@ -16,7 +16,11 @@ const themes = { light: block(':root {'), dark: block(':root[data-theme="dark"]'
 
 function luminance(hex: string): number {
   const c = [1, 3, 5].map((i) => Number.parseInt(hex.slice(i, i + 2), 16) / 255)
-  const [r, g, b] = c.map((v) => (v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4)) as [number, number, number]
+  const [r, g, b] = c.map((v) => (v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4)) as [
+    number,
+    number,
+    number,
+  ]
   return 0.2126 * r + 0.7152 * g + 0.0722 * b
 }
 const ratio = (a: string, b: string) => {
@@ -37,7 +41,9 @@ for (const [name, theme] of Object.entries(themes)) {
     const ok = r >= min
     if (!ok) failed++
     if (!ok || process.argv.includes('--all')) {
-      console.log(`${ok ? 'ok  ' : 'FAIL'} ${name.padEnd(5)} ${fg.padEnd(10)} on ${bg.padEnd(12)} ${r.toFixed(2)}:1`)
+      console.log(
+        `${ok ? 'ok  ' : 'FAIL'} ${name.padEnd(5)} ${fg.padEnd(10)} on ${bg.padEnd(12)} ${r.toFixed(2)}:1`,
+      )
     }
   }
 }

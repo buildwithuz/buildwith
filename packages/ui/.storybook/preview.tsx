@@ -16,9 +16,18 @@ const withGlobals: Decorator = (Story, ctx) => {
 const preview: Preview = {
   decorators: [withGlobals],
   globalTypes: {
-    theme: { description: 'Theme', toolbar: { icon: 'mirror', items: ['light', 'dark'], dynamicTitle: true } },
-    script: { description: 'Script', toolbar: { icon: 'globe', items: ['latn', 'cyrl'], dynamicTitle: true } },
-    locale: { description: 'Locale', toolbar: { icon: 'comment', items: ['uz', 'ru', 'en'], dynamicTitle: true } },
+    theme: {
+      description: 'Theme',
+      toolbar: { icon: 'mirror', items: ['light', 'dark'], dynamicTitle: true },
+    },
+    script: {
+      description: 'Script',
+      toolbar: { icon: 'globe', items: ['latn', 'cyrl'], dynamicTitle: true },
+    },
+    locale: {
+      description: 'Locale',
+      toolbar: { icon: 'comment', items: ['uz', 'ru', 'en'], dynamicTitle: true },
+    },
   },
   initialGlobals: { theme: 'light', script: 'latn', locale: 'uz' },
   parameters: { a11y: { test: 'error' }, layout: 'fullscreen' },

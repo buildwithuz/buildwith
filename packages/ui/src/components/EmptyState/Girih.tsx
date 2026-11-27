@@ -1,3 +1,5 @@
+import { useId } from 'react'
+
 /**
  * A thin girih line pattern. Ornament only: empty states, 404 and the footer,
  * never behind text.
@@ -24,19 +26,23 @@ export function Girih({ className, size = 120 }: { className?: string; size?: nu
   )
 }
 
-/** A repeating band of stars for the footer. */
-export function GirihBand({ className }: { className?: string }) {
+/** A repeating band of eight-point stars: the footer, profile banners without a photo. */
+export function GirihBand({ className, height = 40 }: { className?: string; height?: number }) {
+  // A unique id per instance so several bands on one page don't share a pattern.
+  const id = `bw-girih-${useId().replace(/:/g, '')}`
+  const tile = 40
   return (
-    <svg aria-hidden="true" className={className} width="100%" height="24" preserveAspectRatio="none">
+    <svg aria-hidden="true" className={className} width="100%" height={height}>
       <defs>
-        <pattern id="bw-girih" width="24" height="24" patternUnits="userSpaceOnUse">
-          <g fill="none" stroke="currentColor" strokeWidth="0.75">
-            <rect x="6" y="6" width="12" height="12" />
-            <rect x="6" y="6" width="12" height="12" transform="rotate(45 12 12)" />
+        <pattern id={id} width={tile} height={tile} patternUnits="userSpaceOnUse">
+          <g fill="none" stroke="currentColor" strokeWidth="1">
+            <rect x="10" y="10" width="20" height="20" />
+            <rect x="10" y="10" width="20" height="20" transform="rotate(45 20 20)" />
+            <path d="M0 20h5.9M34.1 20H40M20 0v5.9M20 34.1V40" />
           </g>
         </pattern>
       </defs>
-      <rect width="100%" height="24" fill="url(#bw-girih)" />
+      <rect width="100%" height={height} fill={`url(#${id})`} />
     </svg>
   )
 }

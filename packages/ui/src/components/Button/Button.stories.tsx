@@ -2,7 +2,11 @@ import type { Meta, StoryObj } from '@storybook/react-vite'
 import { Plus } from 'lucide-react'
 import { Button } from './Button'
 
-const meta: Meta<typeof Button> = { title: 'Controls/Button', component: Button, args: { children: 'Joylash' } }
+const meta: Meta<typeof Button> = {
+  title: 'Controls/Button',
+  component: Button,
+  args: { children: 'Joylash' },
+}
 export default meta
 type S = StoryObj<typeof Button>
 

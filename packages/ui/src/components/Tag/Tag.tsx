@@ -2,7 +2,11 @@ import type { AnchorHTMLAttributes } from 'react'
 import { cx } from '../../cx'
 
 /** A topic chip. `#` is part of the look, not the slug. Never transliterated. */
-export function Tag({ slug, className, ...props }: { slug: string } & AnchorHTMLAttributes<HTMLAnchorElement>) {
+export function Tag({
+  slug,
+  className,
+  ...props
+}: { slug: string } & AnchorHTMLAttributes<HTMLAnchorElement>) {
   return (
     <a
       href={`/t/${slug}`}
