@@ -2,6 +2,8 @@ module github.com/buildwithuz/buildwith/apps/api
 
 go 1.26.0
 
+toolchain go1.26.11
+
 require (
 	github.com/alecthomas/chroma/v2 v2.27.0
 	github.com/jackc/pgx/v5 v5.13.0
