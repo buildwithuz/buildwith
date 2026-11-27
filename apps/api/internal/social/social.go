@@ -140,10 +140,6 @@ func (h *Social) UnmuteUser(ctx context.Context, req api.UnmuteUserRequestObject
 	return api.UnmuteUser200JSONResponse{RelationJSONResponse: rel(r)}, nil
 }
 
-type followRow interface {
-	dbgen.ListFollowersRow | dbgen.ListFollowingRow
-}
-
 func (h *Social) listPeople(ctx context.Context, username string, c *string, l *int, following bool) (api.UserPage, error) {
 	t, err := h.target(ctx, username)
 	if err != nil {

@@ -22,13 +22,6 @@ type P struct {
 
 func New(q *dbgen.Queries, viewer *dbgen.User) *P { return &P{Q: q, Viewer: viewer} }
 
-func (p *P) viewerID() int64 {
-	if p.Viewer == nil {
-		return 0
-	}
-	return p.Viewer.ID
-}
-
 func (p *P) viewerPtr() *int64 {
 	if p.Viewer == nil {
 		return nil

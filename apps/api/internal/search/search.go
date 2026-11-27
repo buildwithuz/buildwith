@@ -53,7 +53,8 @@ func (h *Finder) Search(ctx context.Context, req api.SearchRequestObject) (api.S
 		}
 	}
 
-	arg := dbgen.SearchAllParams{Q: q, ViewerID: httpx.ViewerID(ctx), PageLimit: limit, PageOffset: offset}
+	arg := dbgen.SearchAllParams{Q: q, QCyrl: translit.ToCyrillic(q), ViewerID: httpx.ViewerID(ctx),
+		PageLimit: limit, PageOffset: offset}
 	if kind != nil {
 		arg.Kind = present.Ptr(string(*kind))
 	}
