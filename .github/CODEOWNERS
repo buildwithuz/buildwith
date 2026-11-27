@@ -1,0 +1,16 @@
+# Every PR needs approval from at least one code owner of the files it touches.
+# Teams live in the buildwithuz GitHub org. Add people to teams, not to this file.
+
+*                         @buildwithuz/buildwith-maintainers
+
+/apps/api/                @buildwithuz/buildwith-backend
+/packages/api-spec/       @buildwithuz/buildwith-backend @buildwithuz/buildwith-frontend
+/apps/web/                @buildwithuz/buildwith-frontend
+/packages/ui/             @buildwithuz/buildwith-frontend @buildwithuz/buildwith-design
+/packages/i18n/           @buildwithuz/buildwith-i18n
+/packages/translit/       @buildwithuz/buildwith-i18n @buildwithuz/buildwith-backend
+
+# Sensitive: workflows, ownership, deploy, security policy
+/.github/                 @buildwithuz/buildwith-maintainers
+/deploy/                  @buildwithuz/buildwith-maintainers
+/SECURITY.md              @buildwithuz/buildwith-maintainers

@@ -1,0 +1,17 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 💡 Feature idea or change
+    url: https://github.com/buildwithuz/buildwith/discussions/categories/ideas
+    about: Start here. Features are discussed and accepted before anyone writes code.
+  - name: 📐 RFC (big change)
+    url: https://github.com/buildwithuz/buildwith/discussions/categories/rfc
+    about: New format, data model change, new dependency, architecture.
+  - name: ❓ Question
+    url: https://github.com/buildwithuz/buildwith/discussions/categories/q-a
+    about: How do I…? Why does…?
+  - name: 💬 Telegram
+    url: https://t.me/buildwith_uz
+    about: Chat with the community.
+  - name: 🔒 Security issue
+    url: https://github.com/buildwithuz/buildwith/security/advisories/new
+    about: Report privately. Please don't open a public issue.

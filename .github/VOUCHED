@@ -1,0 +1,3 @@
+# GitHub usernames of trusted contributors (one per line).
+# Maintainers add people here after a few good merged PRs. Their PRs get the `vouch:trusted` label.
+# Org members and collaborators are trusted automatically and don't need to be listed.

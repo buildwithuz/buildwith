@@ -1,0 +1,41 @@
+name: Deploy
+
+# Deploys a released tag to the production server over SSH.
+# The "production" environment requires a maintainer's approval in GitHub before this job runs.
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Tag to deploy (e.g. v0.4.0)"
+        required: true
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Deploy over SSH
+        uses: appleboy/ssh-action@v1
+        env:
+          REF: ${{ github.event.release.tag_name || inputs.ref }}
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          fingerprint: ${{ secrets.DEPLOY_HOST_FINGERPRINT }}
+          envs: REF
+          script: |
+            set -euo pipefail
+            cd /srv/buildwith
+            git fetch --tags --force
+            git checkout --detach "$REF"
+            ./deploy/deploy.sh   # backup db → build images → migrate → restart → health check → roll back on failure

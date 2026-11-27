@@ -1,0 +1,85 @@
+name: PR meta
+
+# Runs in the context of the base branch and never checks out PR code, so it is safe for forks.
+on:
+  pull_request_target:
+    types: [opened, edited, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  title:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: amannn/action-semantic-pull-request@v5
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          scopes: |
+            web
+            api
+            ui
+            i18n
+            translit
+            notes
+            links
+            articles
+            profiles
+            mod
+            infra
+            deps
+          requireScope: false
+          subjectPattern: ^[a-z].+$
+          subjectPatternError: "Start the summary with a lowercase verb, e.g. 'feat(notes): add quote posts'."
+
+  labels:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/labeler@v5
+        with:
+          sync-labels: true
+
+      - uses: actions/checkout@v4 # base branch only, to read .github/VOUCHED
+        with:
+          sparse-checkout: .github
+
+      - name: Size and trust labels
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const pr = context.payload.pull_request;
+            const ignored = [/pnpm-lock\.yaml$/, /go\.sum$/, /\.gen\.go$/, /\/generated\//, /\.snap$/];
+
+            const files = await github.paginate(github.rest.pulls.listFiles, {
+              ...context.repo, pull_number: pr.number, per_page: 100,
+            });
+            const lines = files
+              .filter(f => !ignored.some(r => r.test(f.filename)))
+              .reduce((n, f) => n + f.additions + f.deletions, 0);
+            const size = lines < 30 ? 'XS' : lines < 100 ? 'S' : lines < 400 ? 'M' : lines < 1000 ? 'L' : 'XL';
+
+            const vouched = fs.readFileSync('.github/VOUCHED', 'utf8')
+              .split('\n').map(l => l.trim().toLowerCase()).filter(l => l && !l.startsWith('#'));
+            const trusted = ['OWNER', 'MEMBER', 'COLLABORATOR'].includes(pr.author_association)
+              || vouched.includes(pr.user.login.toLowerCase());
+
+            const current = pr.labels.map(l => l.name);
+            const remove = current.filter(l => l.startsWith('size:') || l.startsWith('vouch:'));
+            for (const name of remove) {
+              await github.rest.issues.removeLabel({ ...context.repo, issue_number: pr.number, name }).catch(() => {});
+            }
+            await github.rest.issues.addLabels({
+              ...context.repo, issue_number: pr.number,
+              labels: [`size:${size}`, trusted ? 'vouch:trusted' : 'vouch:new'],
+            });
+
+            if (size === 'XL' && !current.includes('size:XL')) {
+              await github.rest.issues.createComment({
+                ...context.repo, issue_number: pr.number,
+                body: `This PR changes ~${lines} lines (excluding generated and lock files). ` +
+                      `Please consider splitting it; see CONTRIBUTING.md → "What gets accepted".`,
+              });
+            }

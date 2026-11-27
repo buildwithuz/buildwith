@@ -1,0 +1,22 @@
+{
+  "name": "buildwith.uz",
+  "image": "mcr.microsoft.com/devcontainers/base:ubuntu",
+  "features": {
+    "ghcr.io/devcontainers/features/node:1": { "version": "24", "pnpmVersion": "latest" },
+    "ghcr.io/devcontainers/features/go:1": { "version": "latest" },
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {},
+    "ghcr.io/devcontainers/features/github-cli:1": {}
+  },
+  "forwardPorts": [5173, 8080, 6006],
+  "portsAttributes": {
+    "5173": { "label": "web" },
+    "8080": { "label": "api" },
+    "6006": { "label": "storybook" }
+  },
+  "postCreateCommand": "pnpm setup:dev",
+  "customizations": {
+    "vscode": {
+      "extensions": ["golang.go", "biomejs.biome", "bradlc.vscode-tailwindcss", "ms-playwright.playwright"]
+    }
+  }
+}

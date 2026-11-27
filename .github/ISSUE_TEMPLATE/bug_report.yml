@@ -1,0 +1,51 @@
+name: Bug report
+description: Something on buildwith.uz or in the code doesn't work as it should.
+labels: ["bug", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting! Feature ideas go to **Discussions → Ideas**, not here.
+        Security problems: please use **Security → Report a vulnerability** instead.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What did you see, and what did you expect instead?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Go to …
+        2. Click …
+        3. See …
+    validations:
+      required: true
+  - type: dropdown
+    id: where
+    attributes:
+      label: Where?
+      options:
+        - buildwith.uz (production)
+        - Local development
+        - Self-hosted instance
+    validations:
+      required: true
+  - type: input
+    id: env
+    attributes:
+      label: Browser / device / OS
+      placeholder: "Chrome 131, Android 15"
+  - type: dropdown
+    id: settings
+    attributes:
+      label: Language and script
+      multiple: true
+      options: ["Oʻzbekcha (Latin)", "Ўзбекча (Cyrillic)", "Русский", "English"]
+  - type: textarea
+    id: extra
+    attributes:
+      label: Screenshots, logs, anything else
