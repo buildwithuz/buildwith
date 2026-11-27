@@ -123,7 +123,7 @@ limit sqlc.arg(page_limit)::int;
 -- name: ListArticlesByIDs :many
 select sqlc.embed(a), sqlc.embed(u)
 from articles a join users u on u.id = a.author_id
-where a.id = any($1::bigint[]) and a.deleted_at is null;
+where a.id = any(sqlc.arg(ids)::bigint[]) and a.deleted_at is null;
 
 -- name: ListDueScheduledArticles :many
 select id, author_id from articles

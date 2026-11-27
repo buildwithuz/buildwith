@@ -77,16 +77,17 @@ func (q *Queries) FollowTag(ctx context.Context, arg FollowTagParams) (int64, er
 }
 
 const followingForUsers = `-- name: FollowingForUsers :many
-select followee_id from follows where follower_id = $1 and followee_id = any($2::bigint[])
+select followee_id from follows
+where follower_id = $1::bigint and followee_id = any($2::bigint[])
 `
 
 type FollowingForUsersParams struct {
-	FollowerID int64
-	Column2    []int64
+	UserID int64
+	Ids    []int64
 }
 
 func (q *Queries) FollowingForUsers(ctx context.Context, arg FollowingForUsersParams) ([]int64, error) {
-	rows, err := q.db.Query(ctx, followingForUsers, arg.FollowerID, arg.Column2)
+	rows, err := q.db.Query(ctx, followingForUsers, arg.UserID, arg.Ids)
 	if err != nil {
 		return nil, err
 	}

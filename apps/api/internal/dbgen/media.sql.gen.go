@@ -38,7 +38,7 @@ type CreateMediaParams struct {
 	Bytes   int32
 }
 
-func (q *Queries) CreateMedia(ctx context.Context, arg CreateMediaParams) (Medium, error) {
+func (q *Queries) CreateMedia(ctx context.Context, arg CreateMediaParams) (Media, error) {
 	row := q.db.QueryRow(ctx, createMedia,
 		arg.OwnerID,
 		arg.Sha256,
@@ -48,7 +48,7 @@ func (q *Queries) CreateMedia(ctx context.Context, arg CreateMediaParams) (Mediu
 		arg.Height,
 		arg.Bytes,
 	)
-	var i Medium
+	var i Media
 	err := row.Scan(
 		&i.ID,
 		&i.OwnerID,
@@ -67,9 +67,9 @@ const getMedia = `-- name: GetMedia :one
 select id, owner_id, sha256, kind, mime, width, height, bytes, created_at from media where id = $1
 `
 
-func (q *Queries) GetMedia(ctx context.Context, id int64) (Medium, error) {
+func (q *Queries) GetMedia(ctx context.Context, id int64) (Media, error) {
 	row := q.db.QueryRow(ctx, getMedia, id)
-	var i Medium
+	var i Media
 	err := row.Scan(
 		&i.ID,
 		&i.OwnerID,
@@ -88,15 +88,15 @@ const listMediaByIDs = `-- name: ListMediaByIDs :many
 select id, owner_id, sha256, kind, mime, width, height, bytes, created_at from media where id = any($1::bigint[])
 `
 
-func (q *Queries) ListMediaByIDs(ctx context.Context, dollar_1 []int64) ([]Medium, error) {
-	rows, err := q.db.Query(ctx, listMediaByIDs, dollar_1)
+func (q *Queries) ListMediaByIDs(ctx context.Context, ids []int64) ([]Media, error) {
+	rows, err := q.db.Query(ctx, listMediaByIDs, ids)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []Medium{}
+	items := []Media{}
 	for rows.Next() {
-		var i Medium
+		var i Media
 		if err := rows.Scan(
 			&i.ID,
 			&i.OwnerID,

@@ -319,8 +319,8 @@ const listBadgesForUsers = `-- name: ListBadgesForUsers :many
 select user_id, kind, detail, granted_at from user_badges where user_id = any($1::bigint[]) order by user_id, granted_at
 `
 
-func (q *Queries) ListBadgesForUsers(ctx context.Context, dollar_1 []int64) ([]UserBadge, error) {
-	rows, err := q.db.Query(ctx, listBadgesForUsers, dollar_1)
+func (q *Queries) ListBadgesForUsers(ctx context.Context, ids []int64) ([]UserBadge, error) {
+	rows, err := q.db.Query(ctx, listBadgesForUsers, ids)
 	if err != nil {
 		return nil, err
 	}
@@ -497,8 +497,8 @@ const listUsersByID = `-- name: ListUsersByID :many
 select id, username, username_lower, display_name, pronouns, bio, readme_md, readme_html, role_title, company, location, open_to_work, accent, avatar_media, banner_media, lang, script, theme, karma, is_moderator, is_admin, email, email_domain, created_at, updated_at, banned_at, ban_reason, deleted_at from users where id = any($1::bigint[]) and deleted_at is null
 `
 
-func (q *Queries) ListUsersByID(ctx context.Context, dollar_1 []int64) ([]User, error) {
-	rows, err := q.db.Query(ctx, listUsersByID, dollar_1)
+func (q *Queries) ListUsersByID(ctx context.Context, ids []int64) ([]User, error) {
+	rows, err := q.db.Query(ctx, listUsersByID, ids)
 	if err != nil {
 		return nil, err
 	}

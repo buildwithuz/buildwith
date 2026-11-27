@@ -87,10 +87,10 @@ delete from user_badges where user_id = $1 and kind = $2;
 select * from user_badges where user_id = $1 order by granted_at;
 
 -- name: ListBadgesForUsers :many
-select * from user_badges where user_id = any($1::bigint[]) order by user_id, granted_at;
+select * from user_badges where user_id = any(sqlc.arg(ids)::bigint[]) order by user_id, granted_at;
 
 -- name: ListUsersByID :many
-select * from users where id = any($1::bigint[]) and deleted_at is null;
+select * from users where id = any(sqlc.arg(ids)::bigint[]) and deleted_at is null;
 
 -- Twelve-month activity heatmap: one row per day the user posted anything.
 -- name: ActivityHeatmap :many

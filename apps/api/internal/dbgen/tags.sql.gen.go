@@ -62,8 +62,8 @@ const listTagsByIDs = `-- name: ListTagsByIDs :many
 select id, slug, name, description, post_count, created_at from tags where id = any($1::bigint[])
 `
 
-func (q *Queries) ListTagsByIDs(ctx context.Context, dollar_1 []int64) ([]Tag, error) {
-	rows, err := q.db.Query(ctx, listTagsByIDs, dollar_1)
+func (q *Queries) ListTagsByIDs(ctx context.Context, ids []int64) ([]Tag, error) {
+	rows, err := q.db.Query(ctx, listTagsByIDs, ids)
 	if err != nil {
 		return nil, err
 	}
@@ -103,8 +103,8 @@ type ListTagsForArticlesRow struct {
 	Name      string
 }
 
-func (q *Queries) ListTagsForArticles(ctx context.Context, dollar_1 []int64) ([]ListTagsForArticlesRow, error) {
-	rows, err := q.db.Query(ctx, listTagsForArticles, dollar_1)
+func (q *Queries) ListTagsForArticles(ctx context.Context, ids []int64) ([]ListTagsForArticlesRow, error) {
+	rows, err := q.db.Query(ctx, listTagsForArticles, ids)
 	if err != nil {
 		return nil, err
 	}
@@ -142,8 +142,8 @@ type ListTagsForLinksRow struct {
 	Name   string
 }
 
-func (q *Queries) ListTagsForLinks(ctx context.Context, dollar_1 []int64) ([]ListTagsForLinksRow, error) {
-	rows, err := q.db.Query(ctx, listTagsForLinks, dollar_1)
+func (q *Queries) ListTagsForLinks(ctx context.Context, ids []int64) ([]ListTagsForLinksRow, error) {
+	rows, err := q.db.Query(ctx, listTagsForLinks, ids)
 	if err != nil {
 		return nil, err
 	}

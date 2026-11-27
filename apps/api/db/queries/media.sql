@@ -8,7 +8,7 @@ returning *;
 select * from media where id = $1;
 
 -- name: ListMediaByIDs :many
-select * from media where id = any($1::bigint[]);
+select * from media where id = any(sqlc.arg(ids)::bigint[]);
 
 -- name: CountUserUploadsToday :one
 select count(*)::int as count from media

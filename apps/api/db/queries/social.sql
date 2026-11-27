@@ -9,7 +9,8 @@ delete from follows where follower_id = $1 and followee_id = $2;
 select exists (select 1 from follows where follower_id = $1 and followee_id = $2) as following;
 
 -- name: FollowingForUsers :many
-select followee_id from follows where follower_id = $1 and followee_id = any($2::bigint[]);
+select followee_id from follows
+where follower_id = sqlc.arg(user_id)::bigint and followee_id = any(sqlc.arg(ids)::bigint[]);
 
 -- name: ListFollowers :many
 select sqlc.embed(u), f.created_at from follows f

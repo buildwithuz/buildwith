@@ -182,6 +182,7 @@ paths:
       summary: Sign out
       responses:
         "204": { description: Signed out. }
+        "401": { $ref: "#/components/responses/Unauthorized" }
 
   /users/{username}:
     get:
@@ -289,7 +290,7 @@ paths:
             schema:
               type: object
               properties:
-                media_id: { type: integer, format: int64, nullable: true }
+                media_id: { type: [integer, "null"], format: int64 }
       responses:
         "204": { description: Updated. }
         "401": { $ref: "#/components/responses/Unauthorized" }
@@ -306,7 +307,7 @@ paths:
             schema:
               type: object
               properties:
-                media_id: { type: integer, format: int64, nullable: true }
+                media_id: { type: [integer, "null"], format: int64 }
       responses:
         "204": { description: Updated. }
         "401": { $ref: "#/components/responses/Unauthorized" }
@@ -363,12 +364,7 @@ paths:
                 properties:
                   items:
                     type: array
-                    items:
-                      type: object
-                      required: [day, count]
-                      properties:
-                        day: { type: string, format: date }
-                        count: { type: integer }
+                    items: { $ref: "#/components/schemas/HeatmapDay" }
         "404": { $ref: "#/components/responses/NotFound" }
 
   /users/{username}/followers:
@@ -794,7 +790,7 @@ paths:
               properties:
                 subject_type: { $ref: "#/components/schemas/CommentSubject" }
                 subject_id: { type: integer, format: int64 }
-                parent_id: { type: integer, format: int64, nullable: true }
+                parent_id: { type: [integer, "null"], format: int64 }
                 body_md: { type: string, minLength: 1, maxLength: 10000 }
       responses:
         "201":
@@ -856,7 +852,7 @@ paths:
               properties:
                 subject_type: { $ref: "#/components/schemas/VoteSubject" }
                 subject_id: { type: integer, format: int64 }
-                value: { type: integer, enum: [-1, 1] }
+                value: { $ref: "#/components/schemas/VoteDirection" }
       responses:
         "200": { $ref: "#/components/responses/VoteState" }
         "401": { $ref: "#/components/responses/Unauthorized" }
@@ -1248,7 +1244,7 @@ paths:
             schema:
               type: object
               properties:
-                at: { type: string, format: date-time, nullable: true }
+                at: { type: [string, "null"], format: date-time }
       responses:
         "200":
           description: Published or scheduled.
@@ -1437,7 +1433,7 @@ paths:
             schema:
               type: object
               properties:
-                id: { type: integer, format: int64, nullable: true }
+                id: { type: [integer, "null"], format: int64 }
       responses:
         "204": { description: Marked. }
         "401": { $ref: "#/components/responses/Unauthorized" }
@@ -1541,6 +1537,7 @@ paths:
                 properties:
                   open_count: { type: integer }
                   items: { type: array, items: { $ref: "#/components/schemas/Report" } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
 
   /mod/reports/{id}:
@@ -1561,6 +1558,7 @@ paths:
                 reason: { type: string, maxLength: 500 }
       responses:
         "204": { description: Resolved. }
+        "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
 
   /mod/kill:
@@ -1582,6 +1580,7 @@ paths:
                 reason: { type: string, minLength: 3, maxLength: 500 }
       responses:
         "204": { description: Done, and written to the public log. }
+        "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
 
   /mod/ban:
@@ -1602,6 +1601,7 @@ paths:
                 reason: { type: string, minLength: 3, maxLength: 500 }
       responses:
         "204": { description: Done, and written to the public log. }
+        "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
 
   /mod/feature:
@@ -1621,6 +1621,7 @@ paths:
                 featured: { type: boolean }
       responses:
         "204": { description: Done. }
+        "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
 
   /mod/domain-rules:
@@ -1638,6 +1639,7 @@ paths:
                 required: [items]
                 properties:
                   items: { type: array, items: { $ref: "#/components/schemas/DomainRule" } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
     put:
       operationId: setDomainRule
@@ -1661,6 +1663,7 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/DomainRule" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
 
   /mod/holds:
@@ -1679,6 +1682,7 @@ paths:
                 required: [items]
                 properties:
                   items: { type: array, items: { $ref: "#/components/schemas/Hold" } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
     post:
       operationId: releaseHold
@@ -1696,6 +1700,7 @@ paths:
                 subject_id: { type: integer, format: int64 }
       responses:
         "204": { description: Released. }
+        "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
 
 components:
@@ -1801,7 +1806,7 @@ components:
             required: [points, viewer_vote]
             properties:
               points: { type: integer }
-              viewer_vote: { type: integer, enum: [-1, 0, 1] }
+              viewer_vote: { $ref: "#/components/schemas/VoteValue" }
     NoteState:
       description: The note's counters and your relationship to it.
       content:
@@ -1922,8 +1927,8 @@ components:
         location: { type: string }
         open_to_work: { type: boolean }
         accent: { $ref: "#/components/schemas/Accent" }
-        avatar_url: { type: string, nullable: true }
-        banner_url: { type: string, nullable: true }
+        avatar_url: { type: [string, "null"] }
+        banner_url: { type: [string, "null"] }
         karma: { type: integer }
         is_moderator: { type: boolean }
         lang: { $ref: "#/components/schemas/Lang" }
@@ -1953,12 +1958,7 @@ components:
         links:
           type: array
           maxItems: 8
-          items:
-            type: object
-            required: [kind, url]
-            properties:
-              kind: { type: string, enum: [website, github, gitlab, telegram, x, linkedin, email, other] }
-              url: { type: string, maxLength: 300 }
+          items: { $ref: "#/components/schemas/ProfileLink" }
         stack:
           type: array
           maxItems: 20
@@ -1973,12 +1973,7 @@ components:
         readme_md: { type: string, description: Only present for the profile's owner. }
         links:
           type: array
-          items:
-            type: object
-            required: [kind, url]
-            properties:
-              kind: { type: string }
-              url: { type: string }
+          items: { $ref: "#/components/schemas/ProfileLink" }
         stack: { type: array, items: { type: string } }
         repos: { type: array, items: { $ref: "#/components/schemas/Repo" } }
         counts:
@@ -2041,7 +2036,7 @@ components:
       properties:
         kind: { $ref: "#/components/schemas/LinkKind" }
         title: { type: string, minLength: 3, maxLength: 100 }
-        url: { type: string, maxLength: 2000, nullable: true }
+        url: { type: [string, "null"], maxLength: 2000 }
         body_md: { type: string, maxLength: 20000 }
         tags: { type: array, minItems: 1, maxItems: 3, items: { type: string, maxLength: 30 } }
 
@@ -2055,7 +2050,7 @@ components:
         title: { type: string }
         slug: { type: string }
         path: { type: string, description: The canonical path on the site, e.g. /l/42/my-post. }
-        url: { type: string, nullable: true }
+        url: { type: [string, "null"] }
         domain: { type: string }
         body_md: { type: string }
         body_html: { type: string }
@@ -2063,32 +2058,32 @@ components:
         tags: { type: array, items: { $ref: "#/components/schemas/Tag" } }
         points: { type: integer }
         comment_count: { type: integer }
-        viewer_vote: { type: integer, enum: [-1, 0, 1] }
+        viewer_vote: { $ref: "#/components/schemas/VoteValue" }
         viewer_flagged: { type: boolean }
         can_edit: { type: boolean }
         killed: { type: boolean }
         created_at: { type: string, format: date-time }
-        edited_at: { type: string, format: date-time, nullable: true }
+        edited_at: { type: [string, "null"], format: date-time }
 
     LinkPage:
       type: object
       required: [items, nextCursor]
       properties:
         items: { type: array, items: { $ref: "#/components/schemas/Link" } }
-        nextCursor: { type: string, nullable: true }
+        nextCursor: { type: [string, "null"] }
 
     Comment:
       type: object
       required: [id, author, body_html, points, depth, created_at, viewer_vote]
       properties:
         id: { type: integer, format: int64 }
-        parent_id: { type: integer, format: int64, nullable: true }
+        parent_id: { type: [integer, "null"], format: int64 }
         depth: { type: integer }
         author: { $ref: "#/components/schemas/User" }
         body_md: { type: string }
         body_html: { type: string }
         points: { type: integer }
-        viewer_vote: { type: integer, enum: [-1, 0, 1] }
+        viewer_vote: { $ref: "#/components/schemas/VoteValue" }
         can_edit: { type: boolean }
         collapsed:
           type: boolean
@@ -2096,33 +2091,22 @@ components:
         deleted: { type: boolean }
         killed: { type: boolean }
         created_at: { type: string, format: date-time }
-        edited_at: { type: string, format: date-time, nullable: true }
+        edited_at: { type: [string, "null"], format: date-time }
 
     NoteNew:
       type: object
       properties:
         body_md: { type: string, maxLength: 2000 }
-        reply_to_id: { type: integer, format: int64, nullable: true }
-        quote_of_id: { type: integer, format: int64, nullable: true }
-        repost_of_id: { type: integer, format: int64, nullable: true }
+        reply_to_id: { type: [integer, "null"], format: int64 }
+        quote_of_id: { type: [integer, "null"], format: int64 }
+        repost_of_id: { type: [integer, "null"], format: int64 }
         reply_policy: { $ref: "#/components/schemas/ReplyPolicy" }
-        code:
-          type: object
-          description: One optional code block, highlighted on the server.
-          required: [body]
-          properties:
-            lang: { type: string, maxLength: 20 }
-            body: { type: string, maxLength: 4000 }
+        code: { $ref: "#/components/schemas/CodeBlockNew" }
         media:
           type: array
           maxItems: 4
           description: Up to four images. Alt text is required for every one.
-          items:
-            type: object
-            required: [media_id, alt]
-            properties:
-              media_id: { type: integer, format: int64 }
-              alt: { type: string, minLength: 1, maxLength: 300 }
+          items: { $ref: "#/components/schemas/NoteMediaNew" }
 
     Note:
       type: object
@@ -2136,26 +2120,16 @@ components:
         body_html: { type: string }
         code:
           oneOf:
-            - type: object
-              required: [lang, body, html]
-              properties:
-                lang: { type: string }
-                body: { type: string }
-                html: { type: string }
+            - $ref: "#/components/schemas/CodeBlock"
             - type: "null"
         media:
           type: array
-          items:
-            type: object
-            required: [alt, media]
-            properties:
-              alt: { type: string }
-              media: { $ref: "#/components/schemas/Media" }
+          items: { $ref: "#/components/schemas/NoteMedia" }
         preview:
           oneOf:
             - $ref: "#/components/schemas/LinkPreview"
             - type: "null"
-        reply_to_id: { type: integer, format: int64, nullable: true }
+        reply_to_id: { type: [integer, "null"], format: int64 }
         quote_of:
           oneOf:
             - $ref: "#/components/schemas/Note"
@@ -2175,9 +2149,9 @@ components:
         can_edit: { type: boolean }
         can_reply: { type: boolean }
         killed: { type: boolean }
-        promoted_link_id: { type: integer, format: int64, nullable: true }
+        promoted_link_id: { type: [integer, "null"], format: int64 }
         created_at: { type: string, format: date-time }
-        edited_at: { type: string, format: date-time, nullable: true }
+        edited_at: { type: [string, "null"], format: date-time }
 
     LinkPreview:
       type: object
@@ -2197,7 +2171,7 @@ components:
       required: [items, nextCursor]
       properties:
         items: { type: array, items: { $ref: "#/components/schemas/Note" } }
-        nextCursor: { type: string, nullable: true }
+        nextCursor: { type: [string, "null"] }
 
     ArticleEdit:
       type: object
@@ -2207,9 +2181,9 @@ components:
         subtitle: { type: string, maxLength: 200 }
         body_md: { type: string, maxLength: 200000 }
         lang: { $ref: "#/components/schemas/Lang" }
-        canonical_url: { type: string, maxLength: 2000, nullable: true }
-        cover_media_id: { type: integer, format: int64, nullable: true }
-        series_id: { type: integer, format: int64, nullable: true }
+        canonical_url: { type: [string, "null"], maxLength: 2000 }
+        cover_media_id: { type: [integer, "null"], format: int64 }
+        series_id: { type: [integer, "null"], format: int64 }
         series_sort: { type: integer, minimum: 0, maximum: 999 }
         slug: { type: string, maxLength: 120 }
         tags: { type: array, maxItems: 5, items: { type: string, maxLength: 30 } }
@@ -2233,7 +2207,7 @@ components:
             - $ref: "#/components/schemas/Media"
             - type: "null"
         lang: { $ref: "#/components/schemas/Lang" }
-        canonical_url: { type: string, nullable: true }
+        canonical_url: { type: [string, "null"] }
         series:
           oneOf:
             - $ref: "#/components/schemas/Series"
@@ -2244,12 +2218,12 @@ components:
         points: { type: integer }
         comment_count: { type: integer }
         reading_minutes: { type: integer }
-        viewer_vote: { type: integer, enum: [-1, 0, 1] }
+        viewer_vote: { $ref: "#/components/schemas/VoteValue" }
         featured: { type: boolean }
         can_edit: { type: boolean }
         killed: { type: boolean }
-        published_at: { type: string, format: date-time, nullable: true }
-        scheduled_at: { type: string, format: date-time, nullable: true }
+        published_at: { type: [string, "null"], format: date-time }
+        scheduled_at: { type: [string, "null"], format: date-time }
         created_at: { type: string, format: date-time }
         updated_at: { type: string, format: date-time }
 
@@ -2266,7 +2240,7 @@ components:
       required: [items, nextCursor]
       properties:
         items: { type: array, items: { $ref: "#/components/schemas/Article" } }
-        nextCursor: { type: string, nullable: true }
+        nextCursor: { type: [string, "null"] }
 
     ArticleVersion:
       type: object
@@ -2309,14 +2283,14 @@ components:
       required: [items, nextCursor]
       properties:
         items: { type: array, items: { $ref: "#/components/schemas/FeedItem" } }
-        nextCursor: { type: string, nullable: true }
+        nextCursor: { type: [string, "null"] }
 
     UserPage:
       type: object
       required: [items, nextCursor]
       properties:
         items: { type: array, items: { $ref: "#/components/schemas/User" } }
-        nextCursor: { type: string, nullable: true }
+        nextCursor: { type: [string, "null"] }
 
     Notification:
       type: object
@@ -2332,7 +2306,7 @@ components:
             - $ref: "#/components/schemas/User"
             - type: "null"
         subject_type: { type: string }
-        subject_id: { type: integer, format: int64, nullable: true }
+        subject_id: { type: [integer, "null"], format: int64 }
         href: { type: string, description: Where to go when the notification is clicked. }
         read: { type: boolean }
         created_at: { type: string, format: date-time }
@@ -2342,7 +2316,7 @@ components:
       required: [items, nextCursor, unread]
       properties:
         items: { type: array, items: { $ref: "#/components/schemas/Notification" } }
-        nextCursor: { type: string, nullable: true }
+        nextCursor: { type: [string, "null"] }
         unread: { type: integer }
 
     SearchResults:
@@ -2376,7 +2350,7 @@ components:
         actor: { $ref: "#/components/schemas/User" }
         action: { type: string }
         subject_type: { type: string }
-        subject_id: { type: integer, format: int64, nullable: true }
+        subject_id: { type: [integer, "null"], format: int64 }
         subject_text: { type: string }
         reason: { type: string }
         created_at: { type: string, format: date-time }
@@ -2386,7 +2360,7 @@ components:
       required: [items, nextCursor]
       properties:
         items: { type: array, items: { $ref: "#/components/schemas/ModAction" } }
-        nextCursor: { type: string, nullable: true }
+        nextCursor: { type: [string, "null"] }
 
     DomainRule:
       type: object
@@ -2405,3 +2379,50 @@ components:
         subject_id: { type: integer, format: int64 }
         reason: { type: string }
         created_at: { type: string, format: date-time }
+
+    VoteValue: { type: integer, enum: [-1, 0, 1] }
+    VoteDirection: { type: integer, enum: [-1, 1] }
+
+    CodeBlock:
+      type: object
+      required: [lang, body, html]
+      properties:
+        lang: { type: string }
+        body: { type: string }
+        html: { type: string, description: Highlighted on the server; safe to render. }
+
+    CodeBlockNew:
+      type: object
+      description: One optional code block, highlighted on the server.
+      required: [body]
+      properties:
+        lang: { type: string, maxLength: 20 }
+        body: { type: string, maxLength: 4000 }
+
+    NoteMedia:
+      type: object
+      required: [alt, media]
+      properties:
+        alt: { type: string }
+        media: { $ref: "#/components/schemas/Media" }
+
+    NoteMediaNew:
+      type: object
+      required: [media_id, alt]
+      properties:
+        media_id: { type: integer, format: int64 }
+        alt: { type: string, minLength: 1, maxLength: 300 }
+
+    ProfileLink:
+      type: object
+      required: [kind, url]
+      properties:
+        kind: { type: string, enum: [website, github, gitlab, telegram, x, linkedin, email, other] }
+        url: { type: string, maxLength: 300 }
+
+    HeatmapDay:
+      type: object
+      required: [day, count]
+      properties:
+        day: { type: string, format: date }
+        count: { type: integer }

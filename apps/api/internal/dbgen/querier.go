@@ -29,7 +29,7 @@ type Querier interface {
 	BookmarkNote(ctx context.Context, arg BookmarkNoteParams) (int64, error)
 	// Fixed-window rate limiting: one row per key and window.
 	BumpRateCounter(ctx context.Context, arg BumpRateCounterParams) (int32, error)
-	CanReplyToNote(ctx context.Context, arg CanReplyToNoteParams) (interface{}, error)
+	CanReplyToNote(ctx context.Context, arg CanReplyToNoteParams) (bool, error)
 	CastVote(ctx context.Context, arg CastVoteParams) error
 	// Claim a batch of due jobs. SKIP LOCKED lets several workers run side by side.
 	ClaimJobs(ctx context.Context, arg ClaimJobsParams) ([]Job, error)
@@ -53,7 +53,7 @@ type Querier interface {
 	CreateComment(ctx context.Context, arg CreateCommentParams) (Comment, error)
 	CreateIdentity(ctx context.Context, arg CreateIdentityParams) (UserIdentity, error)
 	CreateLink(ctx context.Context, arg CreateLinkParams) (Link, error)
-	CreateMedia(ctx context.Context, arg CreateMediaParams) (Medium, error)
+	CreateMedia(ctx context.Context, arg CreateMediaParams) (Media, error)
 	CreateNote(ctx context.Context, arg CreateNoteParams) (Note, error)
 	// A notification is never created for yourself, for someone who blocked you, or
 	// for someone who muted you.
@@ -88,7 +88,7 @@ type Querier interface {
 	GetComment(ctx context.Context, id int64) (GetCommentRow, error)
 	GetDomainRule(ctx context.Context, domain string) (DomainRule, error)
 	GetLink(ctx context.Context, id int64) (GetLinkRow, error)
-	GetMedia(ctx context.Context, id int64) (Medium, error)
+	GetMedia(ctx context.Context, id int64) (Media, error)
 	GetMonthlyThread(ctx context.Context, arg GetMonthlyThreadParams) (GetMonthlyThreadRow, error)
 	GetNote(ctx context.Context, id int64) (GetNoteRow, error)
 	GetSeries(ctx context.Context, id int64) (Series, error)
@@ -120,13 +120,13 @@ type Querier interface {
 	ListArticleVersions(ctx context.Context, articleID int64) ([]ListArticleVersionsRow, error)
 	// The author's own list, drafts included.
 	ListArticlesByAuthorAll(ctx context.Context, arg ListArticlesByAuthorAllParams) ([]ListArticlesByAuthorAllRow, error)
-	ListArticlesByIDs(ctx context.Context, dollar_1 []int64) ([]ListArticlesByIDsRow, error)
+	ListArticlesByIDs(ctx context.Context, ids []int64) ([]ListArticlesByIDsRow, error)
 	// Published articles, newest first. Keyset cursor is (published_at, id).
 	ListArticlesByPublished(ctx context.Context, arg ListArticlesByPublishedParams) ([]ListArticlesByPublishedRow, error)
 	// Popular articles. Keyset cursor is (score, id).
 	ListArticlesByScore(ctx context.Context, arg ListArticlesByScoreParams) ([]ListArticlesByScoreRow, error)
 	ListBadges(ctx context.Context, userID int64) ([]UserBadge, error)
-	ListBadgesForUsers(ctx context.Context, dollar_1 []int64) ([]UserBadge, error)
+	ListBadgesForUsers(ctx context.Context, ids []int64) ([]UserBadge, error)
 	ListBlocked(ctx context.Context, blockerID int64) ([]ListBlockedRow, error)
 	ListBookmarkedNotes(ctx context.Context, arg ListBookmarkedNotesParams) ([]ListBookmarkedNotesRow, error)
 	ListBookmarksForNotes(ctx context.Context, arg ListBookmarksForNotesParams) ([]int64, error)
@@ -144,12 +144,12 @@ type Querier interface {
 	ListLikesForNotes(ctx context.Context, arg ListLikesForNotesParams) ([]int64, error)
 	// New: newest first. Keyset cursor is (created_at, id).
 	ListLinksByCreated(ctx context.Context, arg ListLinksByCreatedParams) ([]ListLinksByCreatedRow, error)
-	ListLinksByIDs(ctx context.Context, dollar_1 []int64) ([]ListLinksByIDsRow, error)
+	ListLinksByIDs(ctx context.Context, ids []int64) ([]ListLinksByIDsRow, error)
 	// Best: most upvoted first. Keyset cursor is (points, id).
 	ListLinksByPoints(ctx context.Context, arg ListLinksByPointsParams) ([]ListLinksByPointsRow, error)
 	// Top: ranked by the score the ranking job writes. Keyset cursor is (score, id).
 	ListLinksByScore(ctx context.Context, arg ListLinksByScoreParams) ([]ListLinksByScoreRow, error)
-	ListMediaByIDs(ctx context.Context, dollar_1 []int64) ([]Medium, error)
+	ListMediaByIDs(ctx context.Context, ids []int64) ([]Media, error)
 	// The public moderation log. Everything a moderator does shows up here.
 	ListModActions(ctx context.Context, arg ListModActionsParams) ([]ListModActionsRow, error)
 	ListModerators(ctx context.Context) ([]User, error)
@@ -157,12 +157,12 @@ type Querier interface {
 	ListMutedWords(ctx context.Context, userID int64) ([]MutedWord, error)
 	ListNoteAncestors(ctx context.Context, noteID int64) ([]ListNoteAncestorsRow, error)
 	ListNoteEdits(ctx context.Context, noteID int64) ([]NoteEdit, error)
-	ListNoteMedia(ctx context.Context, dollar_1 []int64) ([]ListNoteMediaRow, error)
+	ListNoteMedia(ctx context.Context, ids []int64) ([]ListNoteMediaRow, error)
 	// One thread: the note, its ancestors and its replies.
 	ListNoteReplies(ctx context.Context, arg ListNoteRepliesParams) ([]ListNoteRepliesRow, error)
 	// Latest notes, excluding replies. Keyset cursor is (created_at, id).
 	ListNotes(ctx context.Context, arg ListNotesParams) ([]ListNotesRow, error)
-	ListNotesByIDs(ctx context.Context, dollar_1 []int64) ([]ListNotesByIDsRow, error)
+	ListNotesByIDs(ctx context.Context, ids []int64) ([]ListNotesByIDsRow, error)
 	ListNotifications(ctx context.Context, arg ListNotificationsParams) ([]ListNotificationsRow, error)
 	ListOpenReports(ctx context.Context, limit int32) ([]ListOpenReportsRow, error)
 	ListOpenToWork(ctx context.Context, limit int32) ([]User, error)
@@ -173,17 +173,17 @@ type Querier interface {
 	ListRankCandidates(ctx context.Context) ([]ListRankCandidatesRow, error)
 	ListRepostsForNotes(ctx context.Context, arg ListRepostsForNotesParams) ([]*int64, error)
 	ListSeriesByAuthor(ctx context.Context, authorID int64) ([]Series, error)
-	ListTagsByIDs(ctx context.Context, dollar_1 []int64) ([]Tag, error)
-	ListTagsForArticles(ctx context.Context, dollar_1 []int64) ([]ListTagsForArticlesRow, error)
-	ListTagsForLinks(ctx context.Context, dollar_1 []int64) ([]ListTagsForLinksRow, error)
-	ListTelegramRecipients(ctx context.Context, dollar_1 []int64) ([]ListTelegramRecipientsRow, error)
+	ListTagsByIDs(ctx context.Context, ids []int64) ([]Tag, error)
+	ListTagsForArticles(ctx context.Context, ids []int64) ([]ListTagsForArticlesRow, error)
+	ListTagsForLinks(ctx context.Context, ids []int64) ([]ListTagsForLinksRow, error)
+	ListTelegramRecipients(ctx context.Context, ids []int64) ([]ListTelegramRecipientsRow, error)
 	// Chronological Following timeline: everything from the people and tags you follow.
 	// Fan-out on read, keyset paginated on (created_at, id) across all three kinds.
 	ListTimeline(ctx context.Context, arg ListTimelineParams) ([]ListTimelineRow, error)
 	ListUserLinks(ctx context.Context, userID int64) ([]UserLink, error)
 	ListUserRepos(ctx context.Context, userID int64) ([]UserRepo, error)
 	ListUserStack(ctx context.Context, userID int64) ([]UserStack, error)
-	ListUsersByID(ctx context.Context, dollar_1 []int64) ([]User, error)
+	ListUsersByID(ctx context.Context, ids []int64) ([]User, error)
 	ListVotesForSubjects(ctx context.Context, arg ListVotesForSubjectsParams) ([]ListVotesForSubjectsRow, error)
 	LogModAction(ctx context.Context, arg LogModActionParams) (ModAction, error)
 	MarkNotificationRead(ctx context.Context, arg MarkNotificationReadParams) (int64, error)

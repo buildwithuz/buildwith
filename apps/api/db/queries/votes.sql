@@ -10,7 +10,8 @@ select value from votes where subject_type = $1 and subject_id = $2 and user_id 
 
 -- name: ListVotesForSubjects :many
 select subject_id, value from votes
-where subject_type = $1 and subject_id = any($2::bigint[]) and user_id = $3;
+where subject_type = sqlc.arg(subject_type)::text and subject_id = any(sqlc.arg(ids)::bigint[])
+  and user_id = sqlc.arg(user_id)::bigint;
 
 -- name: AddFlag :execrows
 insert into flags (subject_type, subject_id, user_id) values ($1, $2, $3) on conflict do nothing;

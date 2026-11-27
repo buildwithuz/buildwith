@@ -139,7 +139,7 @@ type LinkTag struct {
 	TagID  int64
 }
 
-type Medium struct {
+type Media struct {
 	ID        int64
 	OwnerID   *int64
 	Sha256    []byte

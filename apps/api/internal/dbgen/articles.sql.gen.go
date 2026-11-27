@@ -581,8 +581,8 @@ type ListArticlesByIDsRow struct {
 	User    User
 }
 
-func (q *Queries) ListArticlesByIDs(ctx context.Context, dollar_1 []int64) ([]ListArticlesByIDsRow, error) {
-	rows, err := q.db.Query(ctx, listArticlesByIDs, dollar_1)
+func (q *Queries) ListArticlesByIDs(ctx context.Context, ids []int64) ([]ListArticlesByIDsRow, error) {
+	rows, err := q.db.Query(ctx, listArticlesByIDs, ids)
 	if err != nil {
 		return nil, err
 	}

@@ -108,7 +108,7 @@ limit sqlc.arg(page_limit)::int;
 -- name: ListLinksByIDs :many
 select sqlc.embed(l), sqlc.embed(u)
 from links l join users u on u.id = l.author_id
-where l.id = any($1::bigint[]) and l.deleted_at is null;
+where l.id = any(sqlc.arg(ids)::bigint[]) and l.deleted_at is null;
 
 -- Candidates for the ranking job: everything posted in the last seven days.
 -- name: ListRankCandidates :many

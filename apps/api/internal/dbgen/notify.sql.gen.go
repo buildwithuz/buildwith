@@ -163,8 +163,8 @@ type ListTelegramRecipientsRow struct {
 	Script string
 }
 
-func (q *Queries) ListTelegramRecipients(ctx context.Context, dollar_1 []int64) ([]ListTelegramRecipientsRow, error) {
-	rows, err := q.db.Query(ctx, listTelegramRecipients, dollar_1)
+func (q *Queries) ListTelegramRecipients(ctx context.Context, ids []int64) ([]ListTelegramRecipientsRow, error) {
+	rows, err := q.db.Query(ctx, listTelegramRecipients, ids)
 	if err != nil {
 		return nil, err
 	}

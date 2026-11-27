@@ -106,12 +106,13 @@ func (q *Queries) GetVote(ctx context.Context, arg GetVoteParams) (int16, error)
 
 const listVotesForSubjects = `-- name: ListVotesForSubjects :many
 select subject_id, value from votes
-where subject_type = $1 and subject_id = any($2::bigint[]) and user_id = $3
+where subject_type = $1::text and subject_id = any($2::bigint[])
+  and user_id = $3::bigint
 `
 
 type ListVotesForSubjectsParams struct {
 	SubjectType string
-	Column2     []int64
+	Ids         []int64
 	UserID      int64
 }
 
@@ -121,7 +122,7 @@ type ListVotesForSubjectsRow struct {
 }
 
 func (q *Queries) ListVotesForSubjects(ctx context.Context, arg ListVotesForSubjectsParams) ([]ListVotesForSubjectsRow, error) {
-	rows, err := q.db.Query(ctx, listVotesForSubjects, arg.SubjectType, arg.Column2, arg.UserID)
+	rows, err := q.db.Query(ctx, listVotesForSubjects, arg.SubjectType, arg.Ids, arg.UserID)
 	if err != nil {
 		return nil, err
 	}

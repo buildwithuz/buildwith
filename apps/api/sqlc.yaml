@@ -18,6 +18,8 @@ sql:
         emit_result_struct_pointers: false
         emit_params_struct_pointers: false
         query_parameter_limit: 1
+        rename:
+          medium: Media
         overrides:
           - db_type: "timestamptz"
             go_type: "time.Time"

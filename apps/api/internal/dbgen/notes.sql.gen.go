@@ -56,7 +56,7 @@ select case n.reply_policy
                                          and f.followee_id = $1::bigint)
          when 'mentioned' then position('@' || lower(v.username) in lower(n.body_md)) > 0
                                or n.author_id = $1::bigint
-       end as allowed
+       end::boolean as allowed
 from notes n, users v
 where n.id = $2::bigint and v.id = $1::bigint
 `
@@ -66,9 +66,9 @@ type CanReplyToNoteParams struct {
 	NoteID   int64
 }
 
-func (q *Queries) CanReplyToNote(ctx context.Context, arg CanReplyToNoteParams) (interface{}, error) {
+func (q *Queries) CanReplyToNote(ctx context.Context, arg CanReplyToNoteParams) (bool, error) {
 	row := q.db.QueryRow(ctx, canReplyToNote, arg.ViewerID, arg.NoteID)
-	var allowed interface{}
+	var allowed bool
 	err := row.Scan(&allowed)
 	return allowed, err
 }
@@ -392,16 +392,17 @@ func (q *Queries) ListBookmarkedNotes(ctx context.Context, arg ListBookmarkedNot
 }
 
 const listBookmarksForNotes = `-- name: ListBookmarksForNotes :many
-select note_id from note_bookmarks where note_id = any($1::bigint[]) and user_id = $2
+select note_id from note_bookmarks
+where note_id = any($1::bigint[]) and user_id = $2::bigint
 `
 
 type ListBookmarksForNotesParams struct {
-	Column1 []int64
-	UserID  int64
+	Ids    []int64
+	UserID int64
 }
 
 func (q *Queries) ListBookmarksForNotes(ctx context.Context, arg ListBookmarksForNotesParams) ([]int64, error) {
-	rows, err := q.db.Query(ctx, listBookmarksForNotes, arg.Column1, arg.UserID)
+	rows, err := q.db.Query(ctx, listBookmarksForNotes, arg.Ids, arg.UserID)
 	if err != nil {
 		return nil, err
 	}
@@ -421,16 +422,17 @@ func (q *Queries) ListBookmarksForNotes(ctx context.Context, arg ListBookmarksFo
 }
 
 const listLikesForNotes = `-- name: ListLikesForNotes :many
-select note_id from note_likes where note_id = any($1::bigint[]) and user_id = $2
+select note_id from note_likes
+where note_id = any($1::bigint[]) and user_id = $2::bigint
 `
 
 type ListLikesForNotesParams struct {
-	Column1 []int64
-	UserID  int64
+	Ids    []int64
+	UserID int64
 }
 
 func (q *Queries) ListLikesForNotes(ctx context.Context, arg ListLikesForNotesParams) ([]int64, error) {
-	rows, err := q.db.Query(ctx, listLikesForNotes, arg.Column1, arg.UserID)
+	rows, err := q.db.Query(ctx, listLikesForNotes, arg.Ids, arg.UserID)
 	if err != nil {
 		return nil, err
 	}
@@ -583,11 +585,11 @@ type ListNoteMediaRow struct {
 	NoteID int64
 	Alt    string
 	Sort   int16
-	Medium Medium
+	Media  Media
 }
 
-func (q *Queries) ListNoteMedia(ctx context.Context, dollar_1 []int64) ([]ListNoteMediaRow, error) {
-	rows, err := q.db.Query(ctx, listNoteMedia, dollar_1)
+func (q *Queries) ListNoteMedia(ctx context.Context, ids []int64) ([]ListNoteMediaRow, error) {
+	rows, err := q.db.Query(ctx, listNoteMedia, ids)
 	if err != nil {
 		return nil, err
 	}
@@ -599,15 +601,15 @@ func (q *Queries) ListNoteMedia(ctx context.Context, dollar_1 []int64) ([]ListNo
 			&i.NoteID,
 			&i.Alt,
 			&i.Sort,
-			&i.Medium.ID,
-			&i.Medium.OwnerID,
-			&i.Medium.Sha256,
-			&i.Medium.Kind,
-			&i.Medium.Mime,
-			&i.Medium.Width,
-			&i.Medium.Height,
-			&i.Medium.Bytes,
-			&i.Medium.CreatedAt,
+			&i.Media.ID,
+			&i.Media.OwnerID,
+			&i.Media.Sha256,
+			&i.Media.Kind,
+			&i.Media.Mime,
+			&i.Media.Width,
+			&i.Media.Height,
+			&i.Media.Bytes,
+			&i.Media.CreatedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -844,8 +846,8 @@ type ListNotesByIDsRow struct {
 	User User
 }
 
-func (q *Queries) ListNotesByIDs(ctx context.Context, dollar_1 []int64) ([]ListNotesByIDsRow, error) {
-	rows, err := q.db.Query(ctx, listNotesByIDs, dollar_1)
+func (q *Queries) ListNotesByIDs(ctx context.Context, ids []int64) ([]ListNotesByIDsRow, error) {
+	rows, err := q.db.Query(ctx, listNotesByIDs, ids)
 	if err != nil {
 		return nil, err
 	}
@@ -1026,16 +1028,17 @@ func (q *Queries) ListPopularNotes(ctx context.Context, arg ListPopularNotesPara
 
 const listRepostsForNotes = `-- name: ListRepostsForNotes :many
 select repost_of_id from notes
-where author_id = $1 and repost_of_id = any($2::bigint[]) and deleted_at is null
+where author_id = $1::bigint and repost_of_id = any($2::bigint[])
+  and deleted_at is null
 `
 
 type ListRepostsForNotesParams struct {
-	AuthorID int64
-	Column2  []int64
+	UserID int64
+	Ids    []int64
 }
 
 func (q *Queries) ListRepostsForNotes(ctx context.Context, arg ListRepostsForNotesParams) ([]*int64, error) {
-	rows, err := q.db.Query(ctx, listRepostsForNotes, arg.AuthorID, arg.Column2)
+	rows, err := q.db.Query(ctx, listRepostsForNotes, arg.UserID, arg.Ids)
 	if err != nil {
 		return nil, err
 	}

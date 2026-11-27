@@ -34,7 +34,7 @@ insert into note_media (note_id, media_id, alt, sort) values ($1, $2, $3, $4);
 -- name: ListNoteMedia :many
 select nm.note_id, nm.alt, nm.sort, sqlc.embed(m)
 from note_media nm join media m on m.id = nm.media_id
-where nm.note_id = any($1::bigint[])
+where nm.note_id = any(sqlc.arg(ids)::bigint[])
 order by nm.note_id, nm.sort;
 
 -- name: RecordNoteEdit :exec
@@ -50,7 +50,8 @@ insert into note_likes (note_id, user_id) values ($1, $2) on conflict do nothing
 delete from note_likes where note_id = $1 and user_id = $2;
 
 -- name: ListLikesForNotes :many
-select note_id from note_likes where note_id = any($1::bigint[]) and user_id = $2;
+select note_id from note_likes
+where note_id = any(sqlc.arg(ids)::bigint[]) and user_id = sqlc.arg(user_id)::bigint;
 
 -- name: BookmarkNote :execrows
 insert into note_bookmarks (note_id, user_id) values ($1, $2) on conflict do nothing;
@@ -59,7 +60,8 @@ insert into note_bookmarks (note_id, user_id) values ($1, $2) on conflict do not
 delete from note_bookmarks where note_id = $1 and user_id = $2;
 
 -- name: ListBookmarksForNotes :many
-select note_id from note_bookmarks where note_id = any($1::bigint[]) and user_id = $2;
+select note_id from note_bookmarks
+where note_id = any(sqlc.arg(ids)::bigint[]) and user_id = sqlc.arg(user_id)::bigint;
 
 -- name: FindRepost :one
 select id from notes
@@ -67,7 +69,8 @@ where author_id = $1 and repost_of_id = $2 and deleted_at is null limit 1;
 
 -- name: ListRepostsForNotes :many
 select repost_of_id from notes
-where author_id = $1 and repost_of_id = any($2::bigint[]) and deleted_at is null;
+where author_id = sqlc.arg(user_id)::bigint and repost_of_id = any(sqlc.arg(ids)::bigint[])
+  and deleted_at is null;
 
 -- Latest notes, excluding replies. Keyset cursor is (created_at, id).
 -- name: ListNotes :many
@@ -137,7 +140,7 @@ limit sqlc.arg(page_limit)::int;
 -- name: ListNotesByIDs :many
 select sqlc.embed(n), sqlc.embed(u)
 from notes n join users u on u.id = n.author_id
-where n.id = any($1::bigint[]) and n.deleted_at is null;
+where n.id = any(sqlc.arg(ids)::bigint[]) and n.deleted_at is null;
 
 -- name: CountAuthorNotesSince :one
 select count(*)::int as count from notes
@@ -151,6 +154,6 @@ select case n.reply_policy
                                          and f.followee_id = sqlc.arg(viewer_id)::bigint)
          when 'mentioned' then position('@' || lower(v.username) in lower(n.body_md)) > 0
                                or n.author_id = sqlc.arg(viewer_id)::bigint
-       end as allowed
+       end::boolean as allowed
 from notes n, users v
 where n.id = sqlc.arg(note_id)::bigint and v.id = sqlc.arg(viewer_id)::bigint;

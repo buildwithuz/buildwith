@@ -31,7 +31,7 @@ update notifications set read_at = now() where id = $1 and user_id = $2 and read
 -- name: ListTelegramRecipients :many
 select t.chat_id, u.lang, u.script from telegram_accounts t
 join users u on u.id = t.user_id
-where t.user_id = any($1::bigint[]) and t.notify;
+where t.user_id = any(sqlc.arg(ids)::bigint[]) and t.notify;
 
 -- name: ListAllTelegramRecipients :many
 select t.chat_id, u.lang, u.script from telegram_accounts t
