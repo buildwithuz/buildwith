@@ -227,6 +227,7 @@ func (w *Worker) TelegramChannel(ctx context.Context) error {
 func (w *Worker) Cleanup(ctx context.Context) error {
 	for _, f := range []func(context.Context) (int64, error){
 		w.A.Q.DeleteExpiredSessions, w.A.Q.DeleteExpiredOAuthStates, w.A.Q.PruneRateCounters, w.A.Q.ReleaseStaleJobs,
+		w.A.Q.PruneSupportMessages,
 	} {
 		if _, err := f(ctx); err != nil {
 			return err

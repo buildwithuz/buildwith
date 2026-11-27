@@ -146,11 +146,16 @@ services:
       args:
         VERSION: ${BUILDWITH_IMAGE_TAG:-dev}
     restart: unless-stopped
-    # web needs no secrets: it talks to the API like a browser does.
+    # web needs no secrets: it talks to the API like a browser does. It does get
+    # the public bits of sign-in and support config, to show the right buttons and links.
     environment:
       NODE_ENV: production
       PORT: "3000"
       BUILDWITH_API_ORIGIN: http://api:8080
+      BUILDWITH_PUBLIC_ORIGIN: ${BUILDWITH_PUBLIC_ORIGIN:-https://buildwith.uz}
+      BUILDWITH_GITHUB_CLIENT_ID: ${BUILDWITH_GITHUB_CLIENT_ID:-}
+      BUILDWITH_GOOGLE_CLIENT_ID: ${BUILDWITH_GOOGLE_CLIENT_ID:-}
+      BUILDWITH_TELEGRAM_BOT_USERNAME: ${BUILDWITH_TELEGRAM_BOT_USERNAME:-}
       NODE_OPTIONS: --max-old-space-size=768
       TZ: UTC
     depends_on:
@@ -181,7 +186,6 @@ services:
       - "443:443/udp" # HTTP/3
     environment:
       BUILDWITH_DOMAIN: ${BUILDWITH_DOMAIN:-buildwith.uz}
-      BUILDWITH_ACME_EMAIL: ${BUILDWITH_ACME_EMAIL:-admin@buildwith.uz}
     volumes:
       # The whole folder, not the file: git replaces files on checkout and a single-file
       # bind mount would keep pointing at the old one, so `caddy reload` would see stale config.

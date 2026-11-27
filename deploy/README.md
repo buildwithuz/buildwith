@@ -224,8 +224,23 @@ If the bad release ran a migration the old code can't handle, restore its `prede
 **Backups**: `deploy/backup.sh` any time; `deploy/backup.sh <label>` for one that is kept separately
 (newest 5 labelled, newest 14 scheduled). Test a restore monthly ([restore.md](restore.md#testing-restores)).
 
-**Telegram bot**: set `BUILDWITH_TELEGRAM_BOT_TOKEN` and redeploy; the bot starts only when a token is set.
-Removing the token and redeploying stops it.
+**Telegram bot**: one bot does everything — Telegram sign-in, notifications, the channel autopost and
+**support** (buildwith.uz has no email). Set `BUILDWITH_TELEGRAM_BOT_TOKEN` and `BUILDWITH_TELEGRAM_BOT_USERNAME`
+and redeploy; the bot starts only when a token is set. Removing the token and redeploying stops it.
+
+Support inbox, once:
+
+1. Create a private Telegram group for the maintainers and add the bot to it (no admin rights needed).
+2. In @BotFather: `/setjoingroups` → keep it enabled until the bot is in the group, then disable it so nobody
+   else can add the bot to other groups.
+3. With the bot running, send `/id` in the group; the bot answers with the group id (a negative number).
+4. Set `BUILDWITH_TELEGRAM_SUPPORT_CHAT=<that id>` in `.env.production` and `dc up -d bot`.
+
+People write to the bot; each message appears in the group under a line saying who sent it. **Reply** to it
+(Telegram's reply, not a new message) and the bot delivers your reply to them; 👍 on your message means
+it was delivered. Messages in the group that aren't replies stay in the group. `/help` in the group shows this.
+
+For the login widget, set the bot's domain in @BotFather (`/setdomain` → `buildwith.uz`).
 
 **Rotating secrets.** Edit `.env.production`, then recreate the services that read it:
 

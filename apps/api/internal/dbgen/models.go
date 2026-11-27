@@ -301,6 +301,13 @@ type SpamHold struct {
 	ReleasedAt  *time.Time
 }
 
+type SupportMessage struct {
+	GroupMessageID int64
+	UserChatID     int64
+	UserID         *int64
+	CreatedAt      time.Time
+}
+
 type Tag struct {
 	ID          int64
 	Slug        string

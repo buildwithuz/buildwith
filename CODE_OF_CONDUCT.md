@@ -9,5 +9,6 @@ It applies in the repository, Discussions, the Telegram group, and on buildwith.
 
 ## Reporting
 
-Report problems privately to **conduct@buildwith.uz** or to any maintainer on Telegram. Reports are kept confidential.
+Report problems privately to the buildwith.uz Telegram bot (_Support_ in the site footer) or to any maintainer on
+Telegram. Only maintainers read what you send the bot, and reports are kept confidential.
 Maintainers will respond within 72 hours and follow the Covenant's enforcement guidelines (correction → warning → temporary ban → permanent ban).

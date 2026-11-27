@@ -1,7 +1,7 @@
 # buildwith.uz edge: TLS, security headers, /media from disk, /v1 to the API, the rest to web.
-# BUILDWITH_DOMAIN and BUILDWITH_ACME_EMAIL come from compose.prod.yml.
+# BUILDWITH_DOMAIN comes from compose.prod.yml. No ACME email: Let's Encrypt doesn't
+# need one, and buildwith.uz has no mailbox (support is the Telegram bot).
 {
-	email {$BUILDWITH_ACME_EMAIL}
 	servers {
 		# SSE connections stay open; don't let idle timeouts cut them, but bound slow headers.
 		timeouts {

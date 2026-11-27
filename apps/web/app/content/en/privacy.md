@@ -59,7 +59,7 @@ Your profile and everything you post are public and can be read by anyone, inclu
 
 ## Contact
 
-Questions about your data: write to hello@buildwith.uz or open a discussion on [GitHub](https://github.com/buildwithuz/buildwith).
+Questions about your data? {{contact}}
 
 ## Changes
 

@@ -60,20 +60,69 @@ func (c *Client) Send(ctx context.Context, chatID any, text, buttonText, buttonU
 	return c.call(ctx, "sendMessage", msg, nil)
 }
 
+type Chat struct {
+	ID   int64  `json:"id"`
+	Type string `json:"type"` // private, group, supergroup, channel
+}
+
+type User struct {
+	ID           int64  `json:"id"`
+	IsBot        bool   `json:"is_bot"`
+	FirstName    string `json:"first_name"`
+	LastName     string `json:"last_name"`
+	Username     string `json:"username"`
+	LanguageCode string `json:"language_code"`
+}
+
+// Message carries only what the bot reads. Media is never inspected: support
+// messages are relayed with copyMessage, which keeps photos, files and voice.
+type Message struct {
+	ID      int64    `json:"message_id"`
+	Text    string   `json:"text"`
+	Caption string   `json:"caption"`
+	Chat    Chat     `json:"chat"`
+	From    *User    `json:"from"`
+	ReplyTo *Message `json:"reply_to_message"`
+}
+
 type Update struct {
-	ID      int64 `json:"update_id"`
-	Message *struct {
-		Text string `json:"text"`
-		Chat struct {
-			ID   int64  `json:"id"`
-			Type string `json:"type"`
-		} `json:"chat"`
-		From struct {
-			ID           int64  `json:"id"`
-			Username     string `json:"username"`
-			LanguageCode string `json:"language_code"`
-		} `json:"from"`
-	} `json:"message"`
+	ID      int64    `json:"update_id"`
+	Message *Message `json:"message"`
+}
+
+// SendText posts plain text, optionally as a reply, and returns the new message's id.
+func (c *Client) SendText(ctx context.Context, chatID int64, text string, replyTo int64) (int64, error) {
+	msg := map[string]any{"chat_id": chatID, "text": text, "link_preview_options": map[string]bool{"is_disabled": true}}
+	if replyTo != 0 {
+		msg["reply_parameters"] = map[string]any{"message_id": replyTo, "allow_sending_without_reply": true}
+	}
+	var out struct {
+		ID int64 `json:"message_id"`
+	}
+	err := c.call(ctx, "sendMessage", msg, &out)
+	return out.ID, err
+}
+
+// Copy re-sends a message (any kind) into another chat without a "forwarded
+// from" header, and returns the copy's id.
+func (c *Client) Copy(ctx context.Context, toChat, fromChat, messageID, replyTo int64) (int64, error) {
+	msg := map[string]any{"chat_id": toChat, "from_chat_id": fromChat, "message_id": messageID}
+	if replyTo != 0 {
+		msg["reply_parameters"] = map[string]any{"message_id": replyTo, "allow_sending_without_reply": true}
+	}
+	var out struct {
+		ID int64 `json:"message_id"`
+	}
+	err := c.call(ctx, "copyMessage", msg, &out)
+	return out.ID, err
+}
+
+// React sets the bot's reaction on a message (one of Telegram's standard emoji).
+func (c *Client) React(ctx context.Context, chatID, messageID int64, emoji string) error {
+	return c.call(ctx, "setMessageReaction", map[string]any{
+		"chat_id": chatID, "message_id": messageID,
+		"reaction": []map[string]string{{"type": "emoji", "emoji": emoji}},
+	}, nil)
 }
 
 // Updates long-polls for new messages after offset.

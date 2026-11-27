@@ -18,6 +18,7 @@ import { usernameFrom } from '../lib/handle'
 import { useSignedIn } from '../lib/hooks'
 import { Html, useLang, useT } from '../lib/i18n'
 import { pageMeta } from '../lib/meta'
+import { contactSentence } from '../lib/support.server'
 import type { Route } from './+types/handle'
 
 const PAGES = ['about', 'guidelines', 'privacy', 'terms'] as const
@@ -34,7 +35,7 @@ const content = import.meta.glob<string>('../content/*/*.md', {
 function staticPage(name: PageName, lang: Lang) {
   const md = content[`../content/${lang}/${name}.md`] ?? content[`../content/uz/${name}.md`]
   if (!md) throw data(null, { status: 404 })
-  return renderStatic(md)
+  return renderStatic(md.replaceAll('{{contact}}', contactSentence(lang)))
 }
 
 /** Today's date in Tashkent (UTC+5), so the heatmap ends on the same day for everyone. */

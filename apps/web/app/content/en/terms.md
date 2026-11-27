@@ -70,4 +70,4 @@ These terms are governed by the law of the Republic of Uzbekistan. We would rath
 
 ## Contact
 
-Questions about these terms: write to hello@buildwith.uz or open a discussion on [GitHub](https://github.com/buildwithuz/buildwith).
+Questions about these terms? {{contact}}

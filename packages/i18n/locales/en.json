@@ -98,10 +98,15 @@
   "bot": {
     "autopost": "{title}\n{points} points · {url}",
     "digest_title": "Today's top 10 posts",
-    "help": "/start — turn notifications on\n/stop — turn them off",
-    "start_linked": "Done! buildwith.uz notifications will arrive here. Send /stop to turn them off.",
-    "start_unknown": "Sign in to buildwith.uz with Telegram first, then send /start again.",
-    "stopped": "Telegram is disconnected and your chat id is deleted. Send /start to connect again."
+    "group_help": "This group is the buildwith.uz support inbox. Reply to a person's message and your answer goes to them (👍 means delivered). Messages that aren't replies stay in this group.",
+    "help": "Write here — your message goes to the buildwith.uz team and the answer comes back to this chat.\n\n/start — connect notifications\n/stop — disconnect Telegram",
+    "start_linked": "Done! buildwith.uz notifications will arrive here.\n\nGot a question, an idea or a problem? Write here and the team will answer in this chat.\n\n/stop — disconnect Telegram",
+    "start_unknown": "Hi! This is the buildwith.uz support bot.\n\nGot a question, an idea or a problem? Write here and the team will answer in this chat. Photos and files work too.\n\nTo get notifications here, sign in to the site with Telegram, then send /start again.",
+    "stopped": "Telegram is disconnected and your chat id is deleted. Send /start to connect again.",
+    "support_header": "📩 From {who}. Reply to this message or the next one to answer.",
+    "support_off": "Support isn't connected yet. Please write in GitHub Discussions: github.com/buildwithuz/buildwith/discussions",
+    "support_slow": "That's a lot of messages at once. Please wait a little and write again.",
+    "support_undelivered": "⚠️ The reply wasn't delivered: the person may have blocked the bot."
   },
   "common": {
     "and_more": "and {count} more",
@@ -254,6 +259,7 @@
     "modlog": "Moderation log",
     "privacy": "Privacy",
     "source": "Source code",
+    "support": "Support",
     "terms": "Terms"
   },
   "home": {
@@ -706,6 +712,10 @@
     "title": "New post",
     "too_many_tags": "At most 3 tags.",
     "url_show_hint": "A demo, GitHub or website. No URL? Describe it below."
+  },
+  "support": {
+    "contact_bot": "Write to our Telegram bot {link} — the team answers in the same chat.",
+    "contact_fallback": "Write in {link}."
   },
   "tag": {
     "empty": "Nothing with this tag yet.",
